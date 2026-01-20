@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JEONBUK MUSEUM | Art & History</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <style>
+/* 이 코드를 꼭 넣어주세요! 모든 요소의 크기 계산을 직관적으로 바꿉니다. */
+* { box-sizing: border-box; }
+    :root {
+      --bg: #ffffff;
+      --text: #111111;
+      --sub-text: #555555;
+      --accent: #1e3a8a; /* Jeonbuk Blue */
+      --secondary: #065f46; /* Jeonbuk Green */
+      --border: #e2e8f0;
+      --star: #f59e0b;
+      --kakao: #fae100;
+      --font-title: 'Playfair Display', serif;
+      --font-body: 'Noto Sans KR', sans-serif;
+    }
+
+    /* Base Reset & Typography */
+    body, html {
+      margin: 0; padding: 0;
+      font-family: var(--font-body);
+      color: var(--text);
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      height: 100%;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    h1, h2, h3, h4 { font-family: var(--font-title); }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.4); }
+
+    /* --- Header --- */
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px 40px; position: fixed; width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.98); z-index: 1000;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(10px);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .logo-text { font-family: var(--font-title); font-weight: 700; font-size: 18px; line-height: 1.1; letter-spacing: 0.5px; }
+    .logo-sub { font-family: var(--font-body); font-weight: 300; font-size: 10px; color: #888; display: block; margin-top: 2px;}
+    
+    nav { display: flex; gap: 40px; }
+    nav a { 
+        text-decoration: none; color: #444; font-size: 13px; font-weight: 600; 
+        cursor: pointer; transition: 0.2s; position: relative; letter-spacing: 1px; text-transform: uppercase;
+    }
+    nav a:hover, nav a.active { color: var(--accent); }
+    nav a.active::after { content:''; position: absolute; bottom: -4px; left: 0; width: 100%; height: 2px; background: var(--accent); }
+
+    .lang-switch { display:flex; gap:6px; align-items:center; }
+    .lang-btn {
+      border: 1px solid #ddd; background: #fff; color: #999;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.2s;
+      font-family: var(--font-body);
+    }
+    .lang-btn.is-active { color: var(--text); border-color: var(--text); background: #f8f8f8; }
+
+    /* --- Sections Layout --- */
+    .section { display: none; width: 100%; height: 100vh; padding-top: 68px; box-sizing: border-box; }
+    .section.active { display: block; }
+    #landing-section { height: auto; min-height: 100vh; overflow-y: auto; }
+    #map-section { overflow: hidden; }
+    #course-detail-section { overflow: hidden; }
+
+    /* --- Landing Page --- */
+    .main-title {
+      text-align: center; font-family: var(--font-title);
+      font-size: clamp(40px, 7vw, 72px); letter-spacing: 2px;
+      margin: 80px 0 40px 0; font-weight: 700; color: #111;
+    }
+    .hero-slider-container {
+      position: relative; width: 100%; height: 500px;
+      overflow: hidden; background: #f0f0f0;
+    }
+    .hero-slider-wrapper {
+      display: flex; height: 100%; width: max-content;
+      will-change: transform;
+    }
+    .hero-slide {
+      width: 480px; height: 100%; position: relative; cursor: pointer;
+      flex-shrink: 0; border-right: 1px solid rgba(255,255,255,0.2);
+    }
+    .hero-slide img {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.85) grayscale(20%); transition: 0.6s ease;
+    }
+    .hero-slide:hover img { filter: brightness(1.05) grayscale(0%); transform: scale(1.02); }
+    .slide-info {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      padding: 40px 30px; background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+      color: #fff; box-sizing: border-box; pointer-events: none;
+    }
+    .slide-info h3 { margin: 0; font-size: 24px; font-weight: 400; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .slide-info p { margin: 0; font-size: 13px; font-weight: 300; opacity: 0.9; font-family: var(--font-body); }
+
+    .slider-controls {
+      position: absolute; bottom: 30px; right: 40px; display: flex; gap: 10px; z-index: 50;
+    }
+    .nav-btn {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.4);
+      backdrop-filter: blur(4px); color: #fff;
+      width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+      font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: 0.2s;
+    }
+    .nav-btn:hover { background: #fff; color: #000; border-color: #fff; }
+
+    .course-section { padding: 100px 40px; background: #fff; text-align: center; }
+    .course-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 40px; max-width: 1200px; margin: 50px auto 0;
+    }
+    .course-card { text-align: left; cursor: pointer; border-bottom: 1px solid #000; padding-bottom: 20px; transition: 0.3s; }
+    .course-card:hover { transform: translateY(-8px); border-bottom-width: 3px; }
+    .course-card img { width: 100%; aspect-ratio: 4/3; object-fit: cover; margin-bottom: 20px; background: #f0f0f0; filter: grayscale(10%); transition: 0.3s;}
+    .course-card:hover img { filter: grayscale(0%); }
+    .course-card h4 { margin: 10px 0; font-size: 20px; font-weight: 600; }
+    .course-card p { margin: 0; color: #777; font-size: 14px; line-height: 1.6; }
+
+    /* --- Main Map Section (Search & Filter) --- */
+    #map-container { display: flex; height: 100%; width: 100%; }
+    .sidebar {
+      width: 400px; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; background: #fff; z-index: 10;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    }
+    .sidebar-header { padding: 30px 25px; border-bottom: 1px solid #f1f5f9; background: #fff; }
+    .filter-group { display: flex; gap: 10px; margin-top: 15px; }
+    .filter-btn {
+      flex: 1; padding: 10px; border: 1px solid #ddd; background: #fff;
+      border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+      font-family: var(--font-body); transition: 0.2s;
+    }
+    .filter-btn:hover { background: #f9f9f9; }
+    .filter-btn.active { background: #333; color: #fff; border-color: #333; }
+    #btn-mus.active { background: var(--accent); border-color: var(--accent); }
+    #btn-art.active { background: var(--secondary); border-color: var(--secondary); }
+
+    .map-input { 
+      width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: 4px; 
+      outline: none; background: #fcfcfc; box-sizing: border-box; 
+      font-family: var(--font-body); font-size: 14px;
+    }
+    .map-input:focus { border-color: var(--text); background: #fff; }
+    
+    .filter-sel { 
+      width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; 
+      outline: none; background: white; margin-bottom: 10px; box-sizing: border-box; 
+      font-family: var(--font-body); font-size: 14px;
+    }
+
+    #list-container { flex: 1; overflow-y: auto; background: #fafafa; }
+    .place-card {
+      padding: 25px; border-bottom: 1px solid #eee; cursor: pointer;
+      transition: 0.2s; position: relative; background: #fff;
+    }
+    .place-card:hover { background: #f0f4f8; }
+    .place-card h4 { 
+      margin: 0 0 6px 0; font-size: 16px; color: #222; font-weight: 700; 
+      font-family: var(--font-title);
+    }
+    .place-card p { margin: 0; font-size: 12px; color: #666; line-height: 1.5; }
+    
+    .place-type {
+      position: absolute; top: 25px; right: 25px; font-size: 10px;
+      padding: 3px 8px; border-radius: 100px; font-weight: 700;
+      color: #fff; letter-spacing: 0.5px;
+    }
+    .place-type.museum { background-color: var(--accent); }
+    .place-type.art { background-color: var(--secondary); }
+
+    #map { flex: 1; height: 100%; width: 100%; background: #e5e5e5; }
+
+    /* --- Course Detail Section (Timeline & Route Map) --- */
+    #course-container { display: flex; height: 100%; width: 100%; }
+    .c-sidebar {
+        width: 420px; border-right: 1px solid var(--border);
+        display: flex; flex-direction: column; background: #fff; z-index: 10;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    }
+    .c-header { padding: 30px 25px 20px; border-bottom: 1px solid #eee; }
+    .c-sub-info { font-size: 12px; color: #94a3b8; margin-top: 8px; font-weight: 500;}
+    .c-title { margin: 15px 0 0; font-family: var(--font-title); font-size: 26px; font-weight: 800; color: var(--accent); }
+    
+    .c-timeline { flex: 1; overflow-y: auto; padding: 25px; background: #fafafa; }
+    .timeline-row { display: flex; gap: 15px; align-items: flex-start; position: relative; margin-bottom: 5px; }
+    .c-left-rail { width: 40px; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+    .c-rail-line { width: 2px; background: #cbd5e1; position: absolute; top: 40px; bottom: -20px; left: 19px; z-index: 1; }
+    .c-badge { 
+        width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; 
+        display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; 
+        z-index: 2; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
+    .c-card { 
+        flex: 1; border-radius: 12px; padding: 18px 20px; background: #fff; 
+        border: 1px solid var(--border); cursor: pointer; transition: 0.2s; z-index: 2; 
+    }
+    .c-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .c-card h4 { margin: 0; font-size: 16px; font-weight: 700; color: #333; }
+    .c-card p { margin: 6px 0 0; font-size: 13px; color: #666; }
+    
+    .c-drive { display: flex; align-items: center; gap: 8px; margin: 12px 0 12px 55px; position: relative; z-index: 2; }
+    .c-drive-text { font-size: 11px; color: var(--secondary); font-weight: 600; background: #ecfdf5; padding: 4px 8px; border-radius: 4px; }
+
+    .c-footer { padding: 25px; border-top: 1px solid var(--border); background: #fff; }
+    .c-summary { font-size: 13px; color: #555; line-height: 1.6; background: #f8fafc; padding: 15px; border-radius: 8px; }
+    
+    #c-map { flex: 1; height: 100%; background: #e5e5e5; }
+
+    /* --- Leaflet Popup Customization --- */
+    .leaflet-popup-content-wrapper { 
+      border-radius: 0; padding: 0; box-shadow: 0 5px 20px rgba(0,0,0,0.15); border: none;
+    }
+    .leaflet-popup-tip { box-shadow: none; }
+    .leaflet-popup-content { margin: 0; width: 240px !important; }
+    .pop-body { padding: 20px; text-align: center; }
+    .pop-title { 
+      font-family: var(--font-title); font-weight: 700; font-size: 17px; 
+      margin-bottom: 6px; color: #111; 
+    }
+    .pop-desc { font-size: 12px; color: #777; margin-bottom: 12px; font-family: var(--font-body); }
+    .pop-btn {
+      width: 100%; padding: 10px; background: #fff; border: 1px solid #111;
+      font-size: 11px; font-weight: 700; cursor: pointer;
+      color: #111; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .pop-btn:hover { background: #111; color: #fff; }
+
+    /* --- Marker Cluster Custom Styles --- */
+    .custom-cluster-icon { background-clip: padding-box; border-radius: 50%; transition: 0.3s; }
+    .custom-cluster-icon div {
+      width: 36px; height: 36px; margin-left: 2px; margin-top: 2px; text-align: center; border-radius: 50%;
+      font-family: var(--font-title); font-weight: 700; font-size: 14px; line-height: 36px;
+      border: 1px solid rgba(0,0,0,0.1); box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .cluster-small { background-color: rgba(255, 255, 255, 0.4); }
+    .cluster-small div { background-color: #ffffff; color: #333; }
+    .cluster-medium { background-color: rgba(245, 158, 11, 0.4); }
+    .cluster-medium div { background-color: #f59e0b; color: #fff; border:none; }
+    .cluster-large { background-color: rgba(220, 20, 60, 0.4); }
+    .cluster-large div { background-color: #d32f2f; color: #fff; border:none; }
+
+    /* --- Modal: Detail View --- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(8px);
+      z-index: 2000; display: none;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+   .modal-card {
+  background: white; 
+  width: 92%; max-width: 1100px; height: 88vh;
+  border-radius: 2px; 
+  overflow: hidden; 
+  display: flex !important;       /* Flex 적용 강제 */
+  flex-direction: row !important; /* 가로 배치 강제 */
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  position: relative; border: 1px solid #ddd;
+}
+    .modal-close {
+      position: absolute; top: 15px; right: 15px; z-index: 20;
+      background: rgba(255,255,255,0.8); border: 1px solid #ddd; border-radius: 50%;
+      width: 40px; height: 40px; cursor: pointer; 
+      display: flex; align-items: center; justify-content: center;
+      color: #333; transition: 0.2s; backdrop-filter: blur(4px);
+    }
+    .modal-close:hover { background: #fff; color: var(--accent); transform: rotate(90deg); border-color: var(--accent); }
+
+/* [수정] 왼쪽 영역: 너비 고정 및 기준점 설정 */
+.m-left { 
+  width: 42% !important;        /* 너비 42% 강제 */
+  max-width: 42% !important;    /* 절대 42%를 넘지 못하게 제한 */
+  min-width: 42% !important;    /* 줄어들지도 않게 제한 */
+  background: #fcfcfc; 
+  border-right: 1px solid #eee; 
+  display: flex; 
+  flex-direction: column; 
+  height: 100%;
+  position: relative;           /* 📍 자식 요소들의 기준점이 됨 */
+  z-index: 10;                  /* 오른쪽 영역보다 위에 오지 않도록 조정 */
+}
+
+/* [수정] 이미지 영역: 튀어나가는 것 잘라내기 */
+.m-img-area { 
+  width: 100%;                  /* 부모(.m-left) 너비에 꽉 차게 */
+  height: 350px; 
+  background: #000; 
+  position: relative;           /* 📍 버튼들이 이 안에서만 움직이게 함 */
+  overflow: hidden !important;  /* 📍 핵심: 영역 밖으로 나가는 사진/버튼 숨김 */
+  flex-shrink: 0;
+}
+.m-img-wrapper {
+  display: flex;
+  height: 100%;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+.m-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;         /* 여백 없이 꽉 채우기 */
+  object-position: top left; /* 📍 핵심: 사진의 왼쪽 상단을 기준으로 고정 */
+  flex-shrink: 0;
+}
+
+/* 좌우 네비게이션 버튼 */
+.m-img-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(0,0,0,0.5); color: #fff; border: none;
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; 
+  z-index: 10; transition: 0.2s;
+}
+.m-img-nav:hover { background: rgba(0,0,0,0.8); }
+.m-img-nav.prev { left: 15px; }
+.m-img-nav.next { right: 15px; }
+
+/* 이미지 카운터 (1 / 5) */
+.m-img-counter {
+  position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px;
+  border-radius: 20px; font-size: 12px; z-index: 10;
+  font-family: var(--font-body);
+}
+    
+    /* New Course Link Badge */
+    .course-link-btn {
+        display: inline-flex;
+        align-items: center;
+        background: none;
+        border: none;
+        border-bottom: 1.5px solid var(--accent);
+        color: var(--accent);
+        padding: 5px 0;
+        cursor: pointer;
+        transition: 0.3s;
+        font-family: var(--font-title);
+        font-size: 16px;
+        font-weight: 600;
+        width: auto; 
+    }
+    .course-link-btn:hover { opacity: 0.6; transform: translateX(5px); }
+    .course-link-btn .label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+    .course-link-btn .name { font-family: var(--font-title); font-size: 15px; font-weight: 600; }
+
+    .m-tag-badge { 
+      display: inline-block; font-size: 10px; font-weight: 700; 
+      padding: 4px 8px; border: 1px solid #bbb; color: #444; background: #fff;
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+    }
+    .m-title { 
+      margin: 0 0 25px 0; font-family: var(--font-title); font-size: 32px; 
+      line-height: 1.15; color: #111; letter-spacing: -0.5px;
+    }
+    .info-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 30px; }
+    .info-item { display: flex; gap: 14px; align-items: flex-start; font-size: 13px; color: #444; line-height: 1.5; }
+    .info-icon { width: 22px; text-align: center; color: var(--accent); font-size: 15px; margin-top: 1px; opacity: 0.8; }
+    .info-text { flex: 1; font-weight: 400; color: #333; }
+
+    .m-action-row { display: flex; gap: 12px; margin-top: auto; padding-top: 10px; }
+    .action-btn {
+      flex: 1; padding: 14px 0; text-align: center; text-decoration: none;
+      font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+      gap: 8px; transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); cursor: pointer;
+      text-transform: uppercase; letter-spacing: 0.5px; border-radius: 50px; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none;
+    }
+    .action-btn.website { background: #1c1c1c; color: #fff; }
+    .action-btn.website:hover { background: #333; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .action-btn.kakao { background: var(--kakao); color: #3c1e1e; }
+    .action-btn.kakao:hover { background: #f0d700; transform: translateY(-2px); box-shadow: 0 6px 12px rgba(250, 225, 0, 0.3); }
+    .action-btn.hidden { display: none; }
+
+    .m-right { width: 58%; padding: 50px 60px; overflow-y: auto; display: flex; flex-direction: column; background: #fff; }
+    .m-section-title { 
+      font-family: var(--font-title); font-size: 20px; font-weight: 700; 
+      margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #111; 
+      display: block; color: #111; letter-spacing: 0.5px;
+    }
+    .m-desc-text { 
+      font-size: 15px; line-height: 1.8; color: #333; margin-bottom: 45px; 
+      white-space: pre-line; text-align: justify; word-break: keep-all; letter-spacing: -0.01em;
+    }
+    .m-tags-area { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+    .m-tag { 
+      background: #f4f4f4; color: #555; padding: 6px 14px; 
+      border-radius: 20px; font-size: 12px; transition: 0.2s; cursor: default; font-weight: 500;
+    }
+    .m-tag:hover { background: #333; color: #fff; }
+
+    .nearby-grid { display: grid; gap: 15px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin-bottom: 40px; }
+    .nb-card { background: white; border: 1px solid #eee; overflow: hidden; cursor: pointer; transition: transform 0.2s; }
+    .nb-card:hover { transform: translateY(-4px); border-color: #ccc; }
+    .nb-img { height: 110px; background-color: #f0f0f0; background-size: cover; background-position: center; }
+    .nb-info { padding: 12px; }
+    .nb-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: #222; font-family: var(--font-title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nb-meta { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+    .nb-dist { color: var(--accent); font-weight: 700; }
+
+    .review-area { margin-top: auto; border-top: 1px solid #eee; padding-top: 30px; }
+    .review-list { max-height: 200px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .review-item { background: #fff; padding: 15px; border: 1px solid #eee; font-size: 13px; }
+    .ri-head { display: flex; justify-content: space-between; margin-bottom: 6px; color: #555; font-size: 12px; }
+    .ri-stars { color: var(--star); letter-spacing: -1px; }
+    .no-review { text-align: center; color: #aaa; font-style: italic; padding: 10px; font-family: var(--font-title); }
+    
+    .review-form { background: #f9f9f9; padding: 20px; border: 1px solid #eee; }
+    .rf-rating { margin-bottom: 10px; cursor: pointer; color: #ddd; font-size: 20px; }
+    .rf-rating i.active { color: var(--star); }
+    .rf-row { display: flex; gap: 10px; }
+    .rf-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 0; font-size: 13px; font-family: var(--font-body); }
+    .rf-btn { background: #222; color: white; border: none; padding: 0 20px; border-radius: 0; cursor: pointer; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .rf-btn:hover { background: #000; }
+
+    @media (max-width: 900px) {
+  /* 모바일에서는 세로 배치로 변경 */
+  .modal-card { flex-direction: column !important; } 
+  
+  /* 모바일에서는 왼쪽 영역 너비를 100%로 복구 */
+  .m-left { 
+      width: 100% !important; 
+      max-width: 100% !important; 
+      min-width: 100% !important; 
+      height: 45% !important; 
+      border-right: none; 
+      border-bottom: 1px solid #eee; 
+  }
+  
+  .m-right { width: 100% !important; height: 55% !important; padding: 25px; }
+  .m-img-area { height: 200px; }
+}
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="logo" onclick="showSection('landing')">
+    <div class="logo-text">JEONBUK MUSEUM<span class="logo-sub">Art & History Guide</span></div>
+  </div>
+
+  <nav>
+    <a onclick="app.goToCourse()" id="nav-course" data-i18n="navCourse">COURSE</a>
+    <a onclick="showSection('map')" id="nav-map" data-i18n="navMap">MUSEUM MAP</a>
+  </nav>
+
+  <div class="lang-switch" aria-label="Language switch">
+    <button type="button" class="lang-btn" data-lang="ko">KOR</button>
+    <button type="button" class="lang-btn" data-lang="en">ENG</button>
+  </div>
+</header>
+
+<div id="landing-section" class="section active">
+  <div class="main-title">JEONBUK MUSEUM</div>
+  
+  <div class="hero-slider-container">
+  <div class="hero-slider-wrapper" id="slider-wrapper"></div>
+  <div class="slider-controls">
+    <button class="nav-btn" onclick="manualScroll(480)">&#10094;</button>
+    <button class="nav-btn" onclick="manualScroll(-480)">&#10095;</button>
+  </div>
+</div>
+
+  <section class="course-section">
+    <div style="font-size: 11px; letter-spacing: 2px; color: #999; font-weight:600;" data-i18n="curatedThemes">CURATED THEMES</div>
+    <h2 style="font-size: 36px; margin: 15px 0 25px 0;" data-i18n="recommendedCourses">RECOMMENDED COURSES</h2>
+    <p style="color: #666; font-family: var(--font-title); font-style: italic; font-size:18px;" data-i18n="curatedDesc">전라북도의 숨겨진 이야기를 따라가는 특별한 테마 여행</p>
+    
+    <div class="course-grid" id="main-course-grid"></div>
+  </section>
+</div>
+
+<div id="map-section" class="section">
+  <div id="map-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a onclick="showSection('landing')" style="cursor:pointer; font-size: 12px; color: #888; display:block; margin-bottom:15px; font-family: var(--font-title);" data-i18n="backToMain">← 메인으로 이동</a>
+        <h2 style="margin: 0 0 15px 0; font-size: 24px;" data-i18n="facilityListTitle">시설 목록 조회</h2>
+        
+        <select id="areaFilter" class="filter-sel">
+          <option value="전체" data-i18n="areaAll">전체 시·군</option>
+        </select>
+        
+        <input type="text" id="mapInput" class="map-input" data-i18n-placeholder="searchPlaceholder" placeholder="시설명 또는 태그 검색 (#백제)">
+        
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="filterData('전체')" id="btn-all" data-i18n="filterAll">전체</button>
+          <button class="filter-btn" onclick="filterData('박물관')" id="btn-mus" data-i18n="filterMuseum">박물관</button>
+          <button class="filter-btn" onclick="filterData('미술관')" id="btn-art" data-i18n="filterArt">미술관</button>
+        </div>
+      </div>
+      <div id="list-container"></div>
+    </aside>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div id="course-detail-section" class="section">
+    <div id="course-container">
+        <aside class="c-sidebar">
+            <div class="c-header">
+                <button onclick="showSection('landing')" style="border:none; background:none; padding:0; cursor:pointer; font-size: 12px; color: #888; display:flex; align-items:center; gap:5px; margin-bottom:10px; font-family: var(--font-title);">
+                    <i class="fa-solid fa-arrow-left"></i> <span data-i18n="backToMain">Back</span>
+                </button>
+                <div class="c-sub-info" id="courseSub"></div>
+                <div class="c-title" id="courseTitle"></div>
+            </div>
+            <div class="c-timeline" id="courseTimeline"></div>
+            <div class="c-footer" id="courseFooter"></div>
+        </aside>
+        <div id="c-map"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-card">
+    <button class="modal-close" onclick="app.closeModal()"><i class="fa-solid fa-xmark"></i></button>
+
+    <div class="m-left">
+        
+        <div class="m-img-area">
+            <button class="m-img-nav prev" onclick="app.moveDetailSlide(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="m-img-nav next" onclick="app.moveDetailSlide(1)"><i class="fa-solid fa-chevron-right"></i></button>
+            <div class="m-img-wrapper" id="mImgWrapper"></div>
+            <div class="m-img-counter" id="mImgCounter"></div>
+        </div>
+
+        <div class="m-core-info" style="padding: 30px; flex: 1; overflow-y: auto;">
+            <span class="m-tag-badge" id="mType">Type</span>
+            <h2 class="m-title" id="mName">Name</h2>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-solid fa-map-pin"></i></div>
+                    <div class="info-text" id="mAddr"></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-regular fa-clock"></i></div>
+                    <div class="info-text">
+                        <span id="mHours"></span><br>
+                        <span id="mClosed" style="color:#d32f2f; font-size:12px;"></span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-solid fa-ticket-simple"></i></div>
+                    <div class="info-text" id="mPrice"></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
+                    <div class="info-text" id="mPhone"></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-solid fa-square-parking"></i></div>
+                    <div class="info-text" id="mParking"></div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="fa-solid fa-bell-concierge"></i></div>
+                    <div class="info-text" id="mConv"></div>
+                </div>
+            </div>
+
+            <div class="m-action-row" style="margin-top: auto;">
+                <a id="btnHome" href="#" target="_blank" class="action-btn website">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> <span data-i18n="btnWebsite">홈페이지</span>
+                </a>
+                <a id="btnKakaoMap" href="#" target="_blank" class="action-btn kakao">
+                    <i class="fa-solid fa-diamond-turn-right"></i> <span data-i18n="btnKakao">길찾기</span>
+                </a>
+            </div>
+        </div>
+    </div> <div class="m-right">
+      <div>
+        <div class="m-section-title" data-i18n="sectionIntro">시설 소개</div>
+        <div class="m-desc-text" id="mDesc"></div>
+        
+        <div class="m-section-title" data-i18n="sectionKeywords">주요 키워드</div>
+        <div class="m-tags-area" id="mTags"></div>
+      </div>
+
+      <div id="mRelatedCourseArea" style="display:none; margin-bottom: 45px;">
+        <div class="m-section-title" data-i18n="sectionRelatedCourse">관련 코스</div>
+        <div id="mCourseLink"></div>
+      </div>
+
+      <div>
+        <div class="m-section-title" data-i18n="sectionNearby">인근 문화 시설 (추천)</div>
+        <div class="nearby-grid" id="mNearby"></div>
+      </div>
+
+      <div style="margin-top: auto;">
+        <div class="m-section-title" data-i18n="sectionReviews">관람 후기</div>
+        <div class="review-area">
+          <div id="reviewList" class="review-list"></div>
+          <div class="review-form">
+            <div class="rf-rating" id="starRating">
+              <i class="fa-solid fa-star active" data-score="1"></i>
+              <i class="fa-solid fa-star active" data-score="2"></i>
+              <i class="fa-solid fa-star active" data-score="3"></i>
+              <i class="fa-solid fa-star active" data-score="4"></i>
+              <i class="fa-solid fa-star active" data-score="5"></i>
+            </div>
+            <div class="rf-row">
+              <input type="text" id="reviewUser" class="rf-input" data-i18n-placeholder="reviewNamePh" placeholder="이름" style="width:30%">
+              <input type="text" id="reviewText" class="rf-input" data-i18n-placeholder="reviewTextPh" placeholder="후기를 남겨주세요 (엔터로 등록)" onkeypress="if(event.keyCode==13) app.addReview()">
+              <button class="rf-btn" onclick="app.addReview()" data-i18n="reviewSubmit">등록</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> </div>
+</div>
+
+<script>
+/**********************
+ * i18n Configuration
+ **********************/
+const I18N = {
+  ko: {
+    pageTitle: "JEONBUK MUSEUM | Art & History",
+    navCourse: "코스 추천", navMap: "지도 검색",
+    curatedThemes: "CURATED THEMES", recommendedCourses: "RECOMMENDED COURSES", curatedDesc: "전라북도의 숨겨진 이야기를 따라가는 특별한 테마 여행",
+    backToMain: "← 메인으로 이동", facilityListTitle: "시설 목록 조회", areaAll: "전체 시·군",
+    searchPlaceholder: "시설명 또는 태그 검색 (#백제)",
+    filterAll: "전체", filterMuseum: "박물관", filterArt: "미술관",
+    popupDetail: "상세보기", nearbyNone: "인근 시설 정보가 없습니다.",
+    reviewNone: "아직 작성된 후기가 없습니다.", reviewAlert: "이름과 내용을 입력해주세요.",
+    reviewNamePh: "이름", reviewTextPh: "후기를 남겨주세요 (엔터로 등록)", reviewSubmit: "등록",
+    labelAddr: "주소", labelHours: "운영시간", labelClosed: "휴관일", labelPrice: "입장료",
+    labelPhone: "전화번호", labelParking: "주차장", labelConv: "편의시설",
+    sectionIntro: "시설 소개", sectionKeywords: "주요 키워드", sectionNearby: "인근 문화 시설 (추천)", sectionReviews: "관람 후기",
+    typeMuseum: "박물관", typeArt: "미술관", typeAll: "전체",
+    btnWebsite: "홈페이지", btnKakao: "카카오맵 길찾기",
+    courseIncluded: "포함된 추천 코스: ",
+    sectionRelatedCourse: "관련 코스",
+    c1t: "익산 고대사 코스", c1d: "마한과 백제의 숨결을 따라서",
+    c2t: "근현대사 코스", c2d: "전북의 아픔과 뜨거운 외침",
+    c3t: "전주 조선왕조 코스", c3d: "조선왕조의 뿌리, 전주를 걷다",
+    c4t: "예술 기행 코스", c4d: "전북의 전통과 현대 미",
+    c5t: "농경과 발효 코스", c5d: "전북의 맛을 찾아서",
+    c6t: "생활사 코스", c6d: "전라북도 삶의 기억을 되짚다",
+    c7t: "어린이 체험 코스", c7d: "꿈과 호기심이 자라는 길"
+  },
+  en: {
+    pageTitle: "JEONBUK MUSEUM | Art & History",
+    navCourse: "COURSES", navMap: "MUSEUM MAP",
+    curatedThemes: "CURATED THEMES", recommendedCourses: "RECOMMENDED COURSES", curatedDesc: "A themed journey following Jeollabuk-do’s hidden stories.",
+    backToMain: "← Back to main", facilityListTitle: "Browse Facilities", areaAll: "All cities/counties",
+    searchPlaceholder: "Search by name or tag (#Baekje)",
+    filterAll: "All", filterMuseum: "Museum", filterArt: "Art Museum",
+    popupDetail: "Details", nearbyNone: "No nearby facilities available.",
+    reviewNone: "No reviews yet.", reviewAlert: "Please enter your name and review.",
+    reviewNamePh: "Name", reviewTextPh: "Write a review (press Enter to submit)", reviewSubmit: "Submit",
+    labelAddr: "Address", labelHours: "Hours", labelClosed: "Closed", labelPrice: "Admission",
+    labelPhone: "Phone", labelParking: "Parking", labelConv: "Amenities",
+    sectionIntro: "About", sectionKeywords: "Keywords", sectionNearby: "Nearby Cultural Spots", sectionReviews: "Reviews",
+    typeMuseum: "Museum", typeArt: "Art Museum", typeAll: "All",
+    btnWebsite: "Website", btnKakao: "Directions (Kakao)",
+    courseIncluded: "Recommended Course: ",
+    sectionRelatedCourse: "Related Courses",
+    c1t: "Iksan Ancient History", c1d: "Breath of Mahan & Baekje",
+    c2t: "Modern History Course", c2d: "Pain and Shout of Jeonbuk",
+    c3t: "Jeonju Royal Family", c3d: "Roots of Joseon Dynasty",
+    c4t: "Art & Tradition", c4d: "Traditional & Modern Beauty",
+    c5t: "Farming & Fermentation", c5d: "Tastes of Jeonbuk",
+    c6t: "Life History Course", c6d: "Memories of Life in Jeonbuk",
+    c7t: "Kids Experience", c7d: "Growing Dreams & Curiosity"
+  }
+};
+
+const AREA_I18N_EN = {
+  "익산시": "Iksan", "전주시": "Jeonju", "무주군": "Muju", "부안군": "Buan", "정읍시": "Jeongeup",
+  "고창군": "Gochang", "군산시": "Gunsan", "남원시": "Namwon", "완주군": "Wanju", "김제시": "Gimje",
+  "임실군": "Imsil", "진안군": "Jinan", "장수군": "Jangsu", "순창군": "Sunchang"
+};
+
+const NAME_I18N = {
+    en: {
+        "국립익산박물관": "National Iksan Museum", "국립전주박물관": "National Jeonju Museum", "국립무형유산원": "National Intangible Heritage Museum",
+        "국립태권도박물관": "National Taekwondo Museum", "고부역사문화관": "Gobu History and Culture Center", "고창판소리박물관": "Gochang Pansori Museum", 
+        "군산근대역사박물관": "Gunsan Modern History Museum", "남원향토박물관": "Namwon Local History Museum", "대한민국술테마박물관": "Daehanminguk Sul Theme Museum",
+        "(전북)동학농민혁명기념관": "Jeonbuk Donghak Peasant Revolution Memorial Hall", "마한박물관": "Mahan Museum", "무주곤충박물관": "Muju Insect Museum", 
+        "백정기의사기념관": "Baek Jeong-gi Martyr Memorial Hall", "백제왕궁박물관": "Baekje Royal Palace Museum", "벽골제농경문화박물관": "Byeokgolje Agricultural Culture Museum",
+        "보석박물관": "Gem Museum", "부안청자박물관": "Buan Celadon Museum", "순창장류박물관": "Sunchang Sauce Museum", "신평면 생활사박물관": "Sinpyeong-myeon Life History Museum", 
+        "어진박물관": "Eojin Museum", "일제강점기군산역사관": "Gunsan History Museum of the Japanese Colonial Period", "입점리고분전시관": "Ipjeom-ri Ancient Tombs Exhibition Hall",
+        "전주역사박물관": "Jeonju History Museum", "전주전통술박물관": "Jeonju Traditional Liquor Museum", "진안가위박물관": "Jinan Scissors Museum", 
+        "전주한지박물관": "Jeonju Hanji Museum", "국립군산대학교 박물관": "Gunsan University Museum", "원광대학교 박물관": "Wonkwang University Museum", 
+        "전북특별자치도립미술관": "Jeonbuk Provincial Art Museum", "최북미술관": "Choi Buk Art Museum", "국립새만금간척박물관": "National Saemangeum Reclamation Museum",
+        "국립전사박물관": "National Jeonsa Museum", "고창고인돌박물관": "Gochang Dolmen Museum", "전북특별자치도 산림박물관": "Jeonbuk Special Self-Governing Province Forest Museum",
+        "정읍시립박물관": "Jeongeup Municipal Museum", "진안역사박물관": "Jinan History Museum", "장수역사전시관": "Jangsu History Exhibition Hall",
+        "금산사 성보박물관": "Geumsansa Sacred Relics Museum", "전주시기독교근대역사기념관": "Jeonju Christian Modern History Memorial Hall",
+        "완주책박물관": "Wanju Book Museum", "원불교역사박물관": "Won-Buddhism History Museum", "천호성지가톨릭성물박물관": "Cheonho Catholic Sacred Items Museum",
+        "충간공보물제651호박물관": "Chunggan-gong Treasure No.651 Museum", "카메라영상박물관": "Camera Imaging Museum",
+        "전북대학교 박물관": "Jeonbuk National University Museum", "전주대학교 박물관": "Jeonju University Museum",
+        "남원시립김병종미술관": "Namwon Municipal Kim Byeong-jong Art Museum", "벽천미술관": "Byeokcheon Art Museum",
+        "순창공립옥천골미술관": "Sunchang Public Okcheon-gol Art Museum", "익산예술의전당미술관": "Iksan Arts Center Art Museum",
+        "정읍시립미술관": "Jeongeup Municipal Art Museum"
+    }
+};
+
+const DESC_I18N_EN = {
+  "National Iksan Museum": "The National Iksan Museum illuminates the history and culture of Iksan, the ancient capital of Baekje. Located within the Mireuksaji Temple Site, it showcases the essence of Baekje Buddhist culture, including the Sarira Reliquaries from the Mireuksaji Stone Pagoda.",
+  "National Jeonju Museum": "This museum represents the history and culture of Jeollabuk-do. It houses a vast collection ranging from prehistoric times to the Joseon Dynasty, with a special focus on the royal culture of the Joseon Dynasty and calligraphy art related to Jeonju.",
+  "National Intangible Heritage Museum": "A complex cultural space dedicated to preserving and passing down Korea's intangible cultural heritage. Visitors can appreciate the skills and artistry of human cultural assets and enjoy traditional performances.",
+  "National Taekwondo Museum": "The world's only museum dedicated to Taekwondo. Located within Taekwondowon, it systematically displays the history and development of Taekwondo, from ancient martial arts to a modern Olympic sport.",
+  "National Jeonsa Museum": "Located within the Army NCO Academy, this museum exhibits Korea's war history and military culture from prehistoric times to the present, reminding visitors of the importance of national security.",
+  "National Saemangeum Reclamation Museum": "This museum highlights the history, technology, and future value of the Saemangeum Reclamation Project, known as the largest civil engineering project in Korean history.",
+  "Gobu History and Culture Center": "This center sheds light on the Gobu Uprising, which sparked the Donghak Peasant Revolution. It vividly displays the lives of peasants at the time and the historical background of their resistance.",
+  "Gochang Dolmen Museum": "Located at the UNESCO World Heritage Gochang Dolmen Site, this museum explains the life of the Bronze Age and the construction process of dolmens with various outdoor exhibitions.",
+  "Gochang Pansori Museum": "Established next to the old house of Dongni Shin Jae-hyo, the patron of Pansori, this museum exhibits the history of Pansori and the artifacts of master singers.",
+  "Gunsan Modern History Museum": "Themed around Gunsan's modern history and marine culture, this museum features the popular 'Modern Life Hall' which recreates the streets of Gunsan in the 1930s.",
+  "Namwon Local History Museum": "Located in Chunhyang Theme Park, this museum displays the history, folklore, and culture of Namwon, including materials related to the Tale of Chunhyang.",
+  "Daehanminguk Sul Theme Museum": "The largest liquor-themed museum in Korea with over 50,000 artifacts. It showcases the history of traditional Korean liquor and world alcohol cultures.",
+  "Jeonbuk Donghak Peasant Revolution Memorial Hall": "Built at the Hwangtohyeon Battlefield, where the peasant army won their first victory, this memorial honors the noble spirit of the Donghak Peasant Revolution.",
+  "Mahan Museum": "Located in Seodong Park, this museum re-examines the history and culture of Mahan, which flourished in the Iksan area before Baekje, displaying jar coffins and earthenware.",
+  "Muju Insect Museum": "An insect museum located in Bandiland, Muju. It exhibits rare insect specimens and fossils from around the world and features a dome video room and ecological greenhouse.",
+  "Baek Jeong-gi Martyr Memorial Hall": "A memorial hall honoring the patriotic spirit of Baek Jeong-gi, an independence activist. It exhibits his life and achievements in the anti-Japanese struggle.",
+  "Baekje Royal Palace Museum": "This museum introduces the Wanggung-ri Ruins (UNESCO World Heritage), the site of the Baekje Royal Palace. It features VR and hologram experiences of the ancient palace.",
+  "Byeokgolje Agricultural Culture Museum": "Located at Byeokgolje, Korea's oldest reservoir, this museum showcases the history of traditional agricultural society and displays various farming tools.",
+  "Gem Museum": "The only jewelry museum in Korea, symbolizing Iksan as the 'City of Gems'. It displays over 110,000 rare gems and offers a fossil exhibition hall for children.",
+  "Buan Celadon Museum": "Built on the site of the Goryeo Celadon Kiln in Yucheon-ri, this museum promotes the excellence of Goryeo Celadon and offers pottery-making experiences.",
+  "Sunchang Sauce Museum": "Located in Sunchang, the home of Gochujang (red chili paste), this museum systematically exhibits the history and manufacturing process of Korean traditional sauces.",
+  "Sinpyeong-myeon Life History Museum": "A cozy village museum created with donated items from local residents. It displays daily necessities and farming tools from the past, evoking nostalgia.",
+  "Eojin Museum": "Located inside Gyeonggijeon Shrine, this museum is the only one dedicated to the Royal Portrait (Eojin) of King Taejo. It preserves the original portrait and displays royal ritual artifacts.",
+  "Gunsan History Museum of the Japanese Colonial Period": "A space recording the history of exploitation and resistance in Gunsan during the Japanese colonial period, located near Dongguksa Temple.",
+  "Ipjeom-ri Ancient Tombs Exhibition Hall": "Exhibits artifacts excavated from the Ipjeom-ri Tombs, including gilt-bronze shoes and crowns, proving the historical significance of Iksan in the Baekje era.",
+  "Jeonbuk Special Self-Governing Province Forest Museum": "Located at the foot of Naejangsan Mountain, this museum covers everything about forests and wood, featuring a magnificent wooden structure.",
+  "Jeonju History Museum": "A museum dedicated to the local history of Jeonju, covering everything from the prehistoric age to modern times, including the Later Baekje Kingdom and Donghak Peasant Revolution.",
+  "Jeonju Traditional Liquor Museum": "Located in Jeonju Hanok Village, this museum preserves the culture of 'Gayangju' (home-brewed liquor) and offers brewing experiences.",
+  "Jeongeup Municipal Museum": "Introduces the history and culture of Jeongeup, focusing on 'Jeongeupsa' (the only existing Baekje song) and Naejangsan Mountain.",
+  "Jinan Scissors Museum": "The world's only scissors-themed museum located near Maisan Mountain. It houses over 1,500 rare scissors from the East and West.",
+  "Jinan History Museum": "Displays the nature, history, and culture of Jinan, including artifacts from the submerged districts of Yongdam Dam.",
+  "Jangsu History Exhibition Hall": "A museum showcasing the history of Jangsu, featuring artifacts from the Gaya tombs and local folk materials.",
+  "Geumsansa Sacred Relics Museum": "Preserves and exhibits precious Buddhist cultural heritage from Geumsansa Temple, including Buddha statues and paintings.",
+  "Jeonju Christian Modern History Memorial Hall": "Illuminates the history of Christian missions and the development of modern education and medicine in the Jeonju area.",
+  "Wanju Book Museum": "A book museum located in Samnye Culture and Art Village, remodeled from an old grain warehouse. It exhibits rare old books and textbooks.",
+  "Won-Buddhism History Museum": "Located at the Won-Buddhism Headquarters in Iksan, this museum shows the life of Sotasan (the founder) and the history of the order.",
+  "Jeonju Hanji Museum": "Korea's first museum specializing in paper, promoting the excellence of Jeonju Hanji. Visitors can experience making Hanji themselves.",
+  "Cheonho Catholic Sacred Items Museum": "Located in the Cheonho Catholic Holy Ground, this museum displays various Catholic sacred objects and art from around the world.",
+  "Chunggan-gong Treasure No.651 Museum": "Preserves the Meritorious Subject Certificate (Treasure No. 651) of Yi Sung-won and artifacts of the Yeonan Yi family clan.",
+  "Camera Imaging Museum": "A specialized museum displaying rare cameras and video equipment from various eras, allowing visitors to see the history of photography.",
+  "Gunsan University Museum": "A university museum researching the history and culture of Gunsan and nearby islands, from prehistoric shell mounds to modern history.",
+  "Wonkwang University Museum": "A university museum with a long history, featuring extensive collections of Mahan-Baekje culture and shamanistic artifacts.",
+  "Jeonbuk National University Museum": "As a central university museum in the region, it houses over 30,000 artifacts ranging from the Paleolithic Age to Joseon Dynasty documents.",
+  "Jeonju University Museum": "Specializes in Christian history materials and folk artifacts of the Honam region.",
+  "Jeonbuk Provincial Art Museum": "The representative art museum of Jeonbuk, located near Moaksan Mountain. It hosts exhibitions on Jeonbuk art history and contemporary art.",
+  "Namwon Municipal Kim Byeong-jong Art Museum": "A public art museum displaying works donated by painter Kim Byeong-jong. The architecture itself is a work of art surrounded by nature.",
+  "Byeokcheon Art Museum": "Built in the Byeokgolje Complex to honor the artist Byeokcheon Na Sang-mok, exhibiting his traditional Korean landscape paintings.",
+  "Sunchang Public Okcheon-gol Art Museum": "A cultural art space created by remodeling an old grain warehouse, serving as an open museum for locals and artists.",
+  "Iksan Arts Center Art Museum": "A large-scale art museum located within the Iksan Arts Center, showcasing various genres including painting, sculpture, and media art.",
+  "Jeongeup Municipal Art Museum": "A citizen-friendly art museum created by remodeling the old Jeongeup County Office, offering exhibitions and art education.",
+  "Choi Buk Art Museum": "Dedicated to the Joseon Dynasty painter Choi Buk. It exhibits his landscapes and illuminates his unique artistic world."
+};
+
+const TAGS_I18N_EN = {
+  "National Iksan Museum": ["#BaekjeCapital", "#Mireuksaji", "#SariraReliquary", "#NationalTreasure", "#WorldHeritage", "#IksanTravel"],
+  "National Jeonju Museum": ["#JeonjuCulture", "#JoseonRoyalFamily", "#Calligraphy", "#ScholarCulture", "#JeonbukHistory", "#KidsMuseum"],
+  "National Intangible Heritage Museum": ["#IntangibleHeritage", "#TraditionalPerformance", "#Craftsmanship", "#Pansori", "#MaskDance", "#LivingHeritage"],
+  "National Taekwondo Museum": ["#Taekwondowon", "#MartialArts", "#NationalSport", "#SportsDiplomacy", "#MujuTravel", "#WithKids"],
+  "National Jeonsa Museum": ["#WarHistory", "#Patriots", "#MilitaryCulture", "#NCOAcademy", "#WeaponsExhibition", "#SecurityEducation"],
+  "National Saemangeum Reclamation Museum": ["#SaemangeumSeawall", "#ReclamationTech", "#SeaAndLand", "#BuanAttraction", "#MapHistory", "#MegaProject"],
+  "Gobu History and Culture Center": ["#DonghakRevolution", "#JeonBongjun", "#GobuUprising", "#PeasantResistance", "#JeongeupHistory", "#Democracy"],
+  "Gochang Dolmen Museum": ["#UNESCOWorldHeritage", "#BronzeAge", "#MegalithicCulture", "#PrehistoricExperience", "#GochangTravel"],
+  "Gochang Pansori Museum": ["#DongniShinJaehyo", "#Pansori", "#Singer", "#KoreanTraditionalMusic", "#UNESCOIntangibleHeritage"],
+  "Gunsan Modern History Museum": ["#GunsanTimeTravel", "#ModernHeritage", "#ColonialEra", "#PortCity", "#1930s", "#RetroVibe"],
+  "Namwon Local History Museum": ["#Chunhyangjeon", "#NamwonCulture", "#FolkArtifacts", "#CityOfLove", "#NearGwanghallu"],
+  "Daehanminguk Sul Theme Museum": ["#TraditionalLiquor", "#FermentationScience", "#BrewingExperience", "#KoreanAlcohol", "#WanjuAttraction"],
+  "Jeonbuk Donghak Peasant Revolution Memorial Hall": ["#DonghakRevolution", "#Hwangtohyeon", "#JeonBongjun", "#PeopleAreHeaven", "#AntiFeudalism"],
+  "Mahan Museum": ["#AncientStateMahan", "#JarCoffin", "#IksanHistory", "#SeodongPark", "#ArchaeologyExperience"],
+  "Muju Insect Museum": ["#Bandiland", "#Fireflies", "#RareInsects", "#EcoLearning", "#KidsParadise", "#MujuPlaceToVisit"],
+  "Baek Jeong-gi Martyr Memorial Hall": ["#IndependenceActivist", "#BaekJeonggi", "#AntiJapaneseStruggle", "#Patriot", "#MemorialFacility"],
+  "Baekje Royal Palace Museum": ["#WanggungriRuins", "#UNESCOWorldHeritage", "#KingMu", "#ICTExperience", "#HistoryTour"],
+  "Byeokgolje Agricultural Culture Museum": ["#FirstReservoir", "#AgrarianSociety", "#GimjeHorizon", "#FarmingTools", "#TraditionalExperience"],
+  "Gem Museum": ["#CityOfGems", "#RareGems", "#Jewelry", "#DinosaurMuseum", "#UniqueMuseum", "#ExperienceLearning"],
+  "Buan Celadon Museum": ["#GoryeoCeladon", "#PotteryExperience", "#BuanKiln", "#CeramicCulture", "#Masterpiece", "#BuanTravel"],
+  "Sunchang Sauce Museum": ["#GochujangHometown", "#FermentedFood", "#RoyalTribute", "#Crockery", "#FoodCulture", "#FermentationThemePark"],
+  "Sinpyeong-myeon Life History Museum": ["#VillageMuseum", "#Retro", "#ModernLifeHistory", "#RuralMemories", "#GrandmasHouse"],
+  "Eojin Museum": ["#KingTaejo", "#Gyeonggijeon", "#HanokVillage", "#RoyalPortrait", "#RoyalProcession", "#JoseonRoyalCulture"],
+  "Gunsan History Museum of the Japanese Colonial Period": ["#DarkTourism", "#HistoryOfExploitation", "#ResistanceSpirit", "#NearDongguksa", "#HistoryLesson"],
+  "Ipjeom-ri Ancient Tombs Exhibition Hall": ["#BaekjeTombs", "#GiltBronzeShoes", "#UngpoTouristSite", "#RoyalTombs", "#HistoryWalk"],
+  "Jeonbuk Special Self-Governing Province Forest Museum": ["#ForestExperience", "#ForestCulture", "#Naejangsan", "#WoodCulture", "#NatureLearning", "#HealingSpace"],
+  "Jeonju History Museum": ["#JeonjuHistory", "#LaterBaekje", "#Donghak", "#LocalHistory", "#JeonjuSpirit", "#SpecialExhibition"],
+  "Jeonju Traditional Liquor Museum": ["#HomeBrewedLiquor", "#Brewing", "#HanokVillageCourse", "#TraditionalLiquorExperience", "#Mojou"],
+  "Jeongeup Municipal Museum": ["#Jeongeupsa", "#Naejangsan", "#BaekjeSong", "#LocalHeritage", "#ChoiChi-won", "#JeongeupTour"],
+  "Jinan Scissors Museum": ["#WorldUnique", "#ScissorsHistory", "#Maisan", "#UniqueMuseum", "#DailyTools", "#Design"],
+  "Jinan History Museum": ["#YongdamDam", "#SubmergedDistrict", "#MaisanCulture", "#JinanPlateau", "#LocalLife", "#ArchivalHeritage"],
+  "Jangsu History Exhibition Hall": ["#GayaCulture", "#JangsuApple", "#Nongae", "#LocalHistory", "#SmallMuseum"],
+  "Geumsansa Sacred Relics Museum": ["#MireukFaith", "#BuddhistArt", "#NationalTreasureTemple", "#Moaksan", "#TempleStay"],
+  "Jeonju Christian Modern History Memorial Hall": ["#ModernHeritage", "#MissionHistory", "#SinheungSchool", "#ModernMedicine", "#ChristianHolySite"],
+  "Wanju Book Museum": ["#SamnyeArtVillage", "#OldBooks", "#BookCulture", "#RetroVibe", "#HumanitiesTrip", "#BookCafe"],
+  "Won-Buddhism History Museum": ["#WonBuddhismHolyLand", "#Sotasan", "#ModernReligion", "#MindStudy", "#ReligiousCulture"],
+  "Jeonju Hanji Museum": ["#JeonjuHanji", "#MulberryPaper", "#HanjiMaking", "#PaperHistory", "#JeonjuPaper", "#FamilyExperience"],
+  "Cheonho Catholic Sacred Items Museum": ["#CatholicHolySite", "#Martyrs", "#WorldSacredItems", "#ReligiousArt", "#Pilgrimage", "#InnerPeace"],
+  "Chunggan-gong Treasure No.651 Museum": ["#YeonanYiClan", "#YiSungwon", "#MeritoriousSubject", "#JoseonDocuments", "#FamilyHistory"],
+  "Camera Imaging Museum": ["#UniqueMuseum", "#CameraHistory", "#VideoEquipment", "#PhotoCulture", "#RareCameras", "#Antique"],
+  "Gunsan University Museum": ["#UniversityMuseum", "#GunsanHistory", "#ArchaeologicalExcavation", "#LocalCulture", "#CampusTour"],
+  "Wonkwang University Museum": ["#MahanBaekjeCulture", "#Shamanism", "#FolkMaterials", "#UniversityMuseum", "#LifeHistory"],
+  "Jeonbuk National University Museum": ["#JeonbukUniv", "#OldDocuments", "#RecordCulture", "#RegionalHub", "#HistoryHall"],
+  "Jeonju University Museum": ["#ChristianHistory", "#HonamFolk", "#SpecializedMuseum", "#MissionaryArtifacts", "#EducationProgram"],
+  "Jeonbuk Provincial Art Museum": ["#Moaksan", "#ContemporaryArt", "#SpecialExhibition", "#CulturalComplex", "#ArtWalk"],
+  "Namwon Municipal Kim Byeong-jong Art Museum": ["#KimByeongjong", "#PaintingJourney", "#GardenArtMuseum", "#Architecture", "#LiteraryArt"],
+  "Byeokcheon Art Museum": ["#KoreanPainting", "#ByeokcheonNaSangmok", "#TraditionalPainting", "#LandscapePainting", "#ByeokgoljeComplex"],
+  "Sunchang Public Okcheon-gol Art Museum": ["#UrbanRegeneration", "#GranaryTransformation", "#CulturalArtSpace", "#LocalArtists", "#SunchangArt"],
+  "Iksan Arts Center Art Museum": ["#ComplexCulturalSpace", "#ModernArt", "#Exhibition", "#IksanCulture", "#PerformanceAndArt"],
+  "Jeongeup Municipal Art Museum": ["#OldCountyOffice", "#Remodeling", "#Exhibition", "#ArtExperience", "#JeongeupCulture"],
+  "Choi Buk Art Museum": ["#HosaenggwanChoiBuk", "#JoseonPainter", "#TrueViewLandscape", "#MujuArt", "#NextToLiteratureHouse"]
+};
+
+/* [NEW] Theme i18n (Category) */
+const THEME_I18N = {
+  "역사": "History",
+  "문화": "Culture",
+  "예술": "Art",
+  "자연": "Nature",
+  "기술": "Technology",
+  "교육": "Education",
+  "종교": "Religion",
+  "지역": "Local",
+  "무형유산": "Intangible Heritage",
+  "태권도": "Taekwondo",
+  "새만금": "Saemangeum",
+  "고인돌": "Dolmen",
+  "판소리": "Pansori",
+  "근대역사": "Modern History",
+  "향토역사": "Local History",
+  "술": "Spirits & Alcohol"
+};
+
+/** [NEW] Address i18n (EN) - Added here */
+const ADDRESS_I18N_EN = {
+  "국립익산박물관": "362 Mireuksaji-ro, Iksan-si, Jeonbuk State",
+  "국립전주박물관": "249 Ssukgogae-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "국립무형유산원": "95 Seohak-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "국립태권도박물관": "1482 Museol-ro, Seolcheon-myeon, Muju-gun, Jeonbuk State",
+  "국립전사박물관": "6 Okgeumdong-gil, Yeosan-myeon, Iksan-si, Jeonbuk State",
+  "국립새만금간척박물관": "29-7 Saemangeum-ro, Byeonsan-myeon, Buan-gun, Jeonbuk State",
+  "고부역사문화관": "530 Yeongju-ro, Gobu-myeon, Jeongeup-si, Jeonbuk State",
+  "고창고인돌박물관": "74 Goindolgongwon-gil, Gochang-eup, Gochang-gun, Jeonbuk State",
+  "고창판소리박물관": "100 Dongni-ro, Gochang-eup, Gochang-gun, Jeonbuk State",
+  "군산근대역사박물관": "240 Haemang-ro, Gunsan-si, Jeonbuk State",
+  "남원향토박물관": "14-9 Yangnim-gil, Namwon-si, Jeonbuk State",
+  "대한민국술테마박물관": "232-58 Deokcheonjeonwon-gil, Gui-myeon, Wanju-gun, Jeonbuk State",
+  "동학농민혁명기념관": "742 Donghak-ro, Deokcheon-myeon, Jeongeup-si, Jeonbuk State",
+  "마한박물관": "41-14 Godo 9-gil, Geumma-myeon, Iksan-si, Jeonbuk State",
+  "무주곤충박물관": "1324 Museol-ro, Seolcheon-myeon, Muju-gun, Jeonbuk State",
+  "백정기의사기념관": "1049 Yeongwon-ro, Yeongwon-myeon, Jeongeup-si, Jeonbuk State",
+  "백제왕궁박물관": "666 Gungseong-ro, Wanggung-myeon, Iksan-si, Jeonbuk State",
+  "벽골제농경문화박물관": "442 Byeokgolje-ro, Buryang-myeon, Gimje-si, Jeonbuk State",
+  "보석박물관": "8 Hoban-ro, Wanggung-myeon, Iksan-si, Jeonbuk State",
+  "부안청자박물관": "1493 Cheongja-ro, Boan-myeon, Buan-gun, Jeonbuk State",
+  "순창장류박물관": "43 Jangnyu-ro, Sunchang-eup, Sunchang-gun, Jeonbuk State",
+  "신평면 생활사박물관": "369 Seokdeungseulchi-ro, Sinpyeong-myeon, Imsil-gun, Jeonbuk State",
+  "어진박물관": "44 Taejo-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "일제강점기군산역사관": "21 Dongguksa-gil, Gunsan-si, Jeonbuk State",
+  "입점리고분전시관": "80 Ipjeomgobun-gil, Ungpo-myeon, Iksan-si, Jeonbuk State",
+  "전북특별자치도 산림박물관": "1777 Churyeong-ro, Bokheung-myeon, Sunchang-gun, Jeonbuk State",
+  "전주역사박물관": "259 Ssukgogae-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "전주전통술박물관": "74 Hanji-gil, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "정읍시립박물관": "370-12 Naejangsan-ro, Jeongeup-si, Jeonbuk State",
+  "진안가위박물관": "258 Maisan-ro, Jinan-eup, Jinan-gun, Jeonbuk State",
+  "진안역사박물관": "7 Naesayang-gil, Jinan-eup, Jinan-gun, Jeonbuk State",
+  "장수역사전시관": "11 Bangcheon-gil, Janggye-myeon, Jangsu-gun, Jeonbuk State",
+  "금산사 성보박물관": "1 Moak 15-gil, Geumsan-myeon, Gimje-si, Jeonbuk State",
+  "전주시기독교근대역사기념관": "382 Seowon-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "완주책박물관": "48-1 Samnye-yeok-ro, Samnye-eup, Wanju-gun, Jeonbuk State",
+  "원불교역사박물관": "501 Iksan-daero, Iksan-si, Jeonbuk State",
+  "전주한지박물관": "59 Palbok-ro, Deokjin-gu, Jeonju-si, Jeonbuk State",
+  "천호성지가톨릭성물박물관": "124 Cheonhoseongji-gil, Bibong-myeon, Wanju-gun, Jeonbuk State",
+  "충간공보물제651호박물관": "8 Mireuksan 1-gil, Samgi-myeon, Iksan-si, Jeonbuk State",
+  "카메라영상박물관": "202-3 Daechi-ro, Soyang-myeon, Wanju-gun, Jeonbuk State",
+  "국립군산대학교 박물관": "558 Daehak-ro, Gunsan-si, Jeonbuk State",
+  "원광대학교 박물관": "460 Iksan-daero, Iksan-si, Jeonbuk State",
+  "전북대학교 박물관": "567 Baekje-daero, Deokjin-gu, Jeonju-si, Jeonbuk State",
+  "전주대학교 박물관": "303 Cheonjam-ro, Wansan-gu, Jeonju-si, Jeonbuk State",
+  "전북특별자치도립미술관": "111-6 Moaksan-gil, Gui-myeon, Wanju-gun, Jeonbuk State",
+  "남원시립김병종미술관": "65-14 Hampau-gil, Namwon-si, Jeonbuk State",
+  "벽천미술관": "442 Byeokgolje-ro, Buryang-myeon, Gimje-si, Jeonbuk State",
+  "순창공립옥천골미술관": "81 Namgye-ro, Sunchang-eup, Sunchang-gun, Jeonbuk State",
+  "익산예술의전당미술관": "490 Dongseo-ro, Iksan-si, Jeonbuk State",
+  "정읍시립미술관": "7 Sigi 4-gil, Jeongeup-si, Jeonbuk State",
+  "최북미술관": "15 Choibuk-ro, Muju-eup, Muju-gun, Jeonbuk State"
+};
+
+/* Helper Functions */
+function getArea(m){
+  const lang = window.__lang || "ko";
+  if (lang === "en" && AREA_I18N_EN[m.area]) return AREA_I18N_EN[m.area];
+  return m.area;
+}
+function getAddr(m) {
+  // 영문 주소 데이터가 있고 현재 언어가 영어라면 영문 주소 반환
+  const lang = window.__lang || "ko";
+  if (lang === "en" && ADDRESS_I18N_EN[m.name]) return ADDRESS_I18N_EN[m.name];
+  return m.addr;
+}
+function t(key) {
+  const lang = window.__lang || "ko";
+  return (I18N[lang] && I18N[lang][key]) ? I18N[lang][key] : key;
+}
+function tn(text) {
+  const lang = window.__lang || "ko";
+  return (lang === "en" && NAME_I18N.en[text]) ? NAME_I18N.en[text] : text;
+}
+function displayType(typeKo) {
+  if (typeKo === "미술관") return t("typeArt");
+  if (typeKo === "박물관") return t("typeMuseum");
+  return typeKo;
+}
+
+/** Description Getter */
+function getDesc(m){
+  const lang = window.__lang || localStorage.getItem("siteLanguage") || "ko";
+  if (lang === "en") {
+    const enName = tn(m.name);
+    if (DESC_I18N_EN[enName]) return DESC_I18N_EN[enName];
+  }
+  return m.desc;
+}
+
+/** Tags Getter */
+function getTags(m){
+  const lang = window.__lang || localStorage.getItem("siteLanguage") || "ko";
+  if (lang === "en") {
+    const enName = tn(m.name);
+    if (TAGS_I18N_EN[enName]) return TAGS_I18N_EN[enName];
+  }
+  return m.tags || [];
+}
+
+/** [UPDATE] Tags Getter */
+function getTags(m){
+  const lang = window.__lang || localStorage.getItem("siteLanguage") || "ko";
+  if (lang === "en") {
+    const enName = tn(m.name);
+    if (TAGS_I18N_EN[enName]) return TAGS_I18N_EN[enName];
+  }
+  return m.tags || [];
+}
+
+function getTheme(m) {
+  const lang = window.__lang || localStorage.getItem("siteLanguage") || "ko";
+  if (lang === "en" && THEME_I18N[m.theme]) {
+    return THEME_I18N[m.theme];
+  }
+  return m.theme;
+}
+
+function t_price(s) {
+    if(window.__lang !== 'en') return s;
+    if(!s) return "-";
+    if(s === "무료") return "Free";
+    return s.replace(/성인\s*([\d,]+)원/, "Adults $1 KRW");
+}
+
+function t_closed(s) {
+    if(window.__lang !== 'en') return s;
+    if(!s) return "-";
+    let res = s;
+    res = res.replace(/매주\s*월요일/g, "Every Monday");
+    res = res.replace(/월요일/g, "Mondays");
+    res = res.replace(/일요일/g, "Sundays");
+    res = res.replace(/토요일/g, "Saturdays");
+    res = res.replace(/공휴일/g, "Public Holidays");
+    res = res.replace(/1월 1일/g, "Jan 1st");
+    res = res.replace(/명절/g, "Holidays");
+    res = res.replace(/국경일/g, "National Holidays");
+    return res;
+}
+
+function t_parking(s) {
+    if(window.__lang !== 'en') return s;
+    if(s === "무료") return "Free";
+    if(s === "유료") return "Paid";
+    if(s.includes("협소")) return "Limited";
+    return s;
+}
+
+function t_conv(s) {
+    if(window.__lang !== 'en') return s;
+    if(!s) return "-";
+    const map = {
+        "카페": "Cafe", "수유실": "Nursing Room", "와이파이": "WiFi",
+        "휠체어대여": "Wheelchair Rental", "주차장": "Parking",
+        "유모차대여": "Stroller Rental", "물품보관함": "Lockers",
+        "기념품점": "Gift Shop", "체험관": "Experience Hall",
+        "북카페": "Book Cafe", "매점": "Shop", "도서실": "Library",
+        "엘리베이터": "Elevator", "음성안내기": "Audio Guide",
+        "영상실": "Video Room", "가상체험관": "VR Experience",
+        "야외전시장": "Outdoor Exhibition", "한지체험장": "Hanji Exp.",
+        "한복체험": "Hanbok Exp.", "시음장": "Tasting Room",
+        "도자체험실": "Pottery Class"
+    };
+    return s.split(',').map(w => {
+        w = w.trim();
+        return map[w] || w;
+    }).join(', ');
+}
+
+function safe(v){ return (v === undefined || v === null || v === "") ? "-" : String(v); }
+
+/* Language Application */
+function applyLanguage(lang) {
+  window.__lang = lang;
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.getAttribute("data-i18n")); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.setAttribute("placeholder", t(el.getAttribute("data-i18n-placeholder"))); });
+  document.querySelectorAll(".lang-btn").forEach(btn => { btn.classList.toggle("is-active", btn.dataset.lang === lang); });
+  
+  // Re-render everything
+  renderFilters(); renderList(); renderMarkers(); renderHeroSlider(); renderMainCourses();
+  
+  // If currently in modal, refresh it to update language
+  if(app.currentId) app.openModal(app.currentId);
+  // If currently in course view, update texts
+  if(app.currentCourseNum) app.openCourse(app.currentCourseNum);
+}
+function initLanguage() {
+  const saved = localStorage.getItem("siteLanguage") || "ko";
+  applyLanguage(saved);
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".lang-btn");
+    if (!btn) return;
+    localStorage.setItem("siteLanguage", btn.dataset.lang);
+    applyLanguage(btn.dataset.lang);
+  });
+}
+
+/**********************
+ * Data
+ **********************/
+const museumData = [
+  {id:1, name:"국립익산박물관", lat: 36.011010, lng: 127.027436, homepage:"https://iksan.museum.go.kr", area:"익산시", type:"박물관", addr:"전라북도 익산시 미륵사지로 362, 1층", theme:"역사", 
+   tags:["#백제왕도", "#미륵사지", "#사리장엄구", "#국보", "#세계문화유산", "#익산여행", "#백제역사유적지구"], 
+   desc:"국립익산박물관은 백제 왕도 익산의 역사와 문화를 종합적으로 조명하는 국가박물관입니다. 미륵사지 석탑(국보 제11호)과 미륵사지 출토 유물을 중심으로 백제 불교문화의 정수를 보여주며, 특히 사리장엄구와 금속·도자·기와 유물 전시는 백제의 높은 기술력과 미감을 드러내고 있습니다. 박물관은 유적지 안에 위치하여 관람객이 역사 현장의 숨결을 생생하게 느낄 수 있도록 설계되었습니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-830-0900", parking:"무료", conv:"와이파이, 휠체어대여"},
+  
+  {id:2, name:"국립전주박물관", lat: 35.801303, lng: 127.089713, homepage:"https://jeonju.museum.go.kr", area:"전주시", type:"박물관", addr:"전주시 완산구 쑥고개로 249", theme:"역사", 
+   tags:["#전주문화", "#조선왕실", "#서예", "#선비문화", "#전북역사", "#어린이박물관", "#가족나들이"], 
+   desc:"국립전주박물관은 전라북도의 역사와 문화를 종합적으로 보여주는 대표적인 국립박물관입니다. 선사 시대부터 조선 시대에 이르는 다양한 유물을 소장하고 있으며, 특히 조선 왕실의 본향인 전주의 역사적 위상을 보여주는 왕실 관련 유물과 서예, 도자기 공예품이 풍부합니다. 어린이 박물관과 야외 정원이 잘 조성되어 있어 가족 단위 관람객에게 인기가 높습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"1월 1일", phone:"063-223-5651", parking:"무료", conv:"카페, 수유실"},
+  
+  {id:3, name:"국립무형유산원", lat: 35.8098, lng: 127.1589, homepage:"https://www.nihc.go.kr", area:"전주시", type:"박물관", addr:"전주시 완산구 서학로 95", theme:"무형유산", 
+   tags:["#무형문화재", "#전통공연", "#장인정신", "#판소리", "#탈춤", "#전통공예", "#살아있는유산"], 
+   desc:"국립무형유산원은 전통 기술과 예술, 의식이 오늘날까지 이어지는 무형유산을 보존·전승하는 세계적인 복합 문화 공간입니다. 상설 전시실에서는 인간문화재들의 솜씨와 예술혼이 담긴 작품을 감상할 수 있으며, 정기적으로 열리는 전통 공연과 체험 프로그램을 통해 무형유산의 가치를 몸소 느낄 수 있습니다.", 
+   price:"무료", hours:"9:30-17:30", closed:"월요일", phone:"063-280-1400", parking:"무료", conv:"북카페"},
+  
+  {id:4, name:"국립태권도박물관", lat: 36.0096, lng: 127.7765, homepage:"https://museum.tpf.or.kr", area:"무주군", type:"박물관", addr:"무주군 설천면 무설로 1482", theme:"태권도", 
+   tags:["#태권도원", "#무예", "#대한민국국기", "#태권브이", "#스포츠외교", "#무주여행", "#아이와함께"], 
+   desc:"세계 유일의 국립 태권도 박물관으로, 태권도의 기원과 발전 과정을 체계적으로 보여줍니다. 태권도원 내에 위치하며, 고대 무예 자료부터 현대 올림픽 정식 종목으로 채택되기까지의 역사를 다양한 유물과 영상으로 소개합니다. 로봇 태권브이 관련 전시 등 아이들의 흥미를 끄는 콘텐츠도 마련되어 있습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-320-0500", parking:"무료", conv:"체험관"},
+  
+  {id:5, name:"국립전사박물관", lat: 36.062251, lng: 127.066157, homepage:"https://www.nco.mil.kr:454/mbshome/mbs/nco/subview.do?id=nco_050601000000", area:"익산시", type:"박물관", addr:"익산시 여산면 옥금동길 6", theme:"역사", 
+   tags:["#전쟁사", "#호국영령", "#군사문화", "#부사관학교", "#무기전시", "#안보교육"], 
+   desc:"육군부사관학교 내에 위치한 국립전사박물관은 선사시대부터 현대에 이르는 우리나라의 전쟁사와 군사 문화를 종합적으로 전시합니다. 다양한 무기류와 군사 장비, 호국 영령들의 유품을 통해 국가 안보의 중요성을 일깨우는 교육의 장입니다.", 
+   price:"무료", hours:"9:00-16:00", closed:"국경일", phone:"063-859-6191", parking:"무료", conv:"-"},
+  
+  {id:6, name:"국립새만금간척박물관", lat: 35.696359, lng: 126.555962, homepage:"https://www.nsrm.or.kr", area:"부안군", type:"박물관", addr:"부안군 변산면 새만금로 29-7", theme:"새만금", 
+   tags:["#새만금방조제", "#간척기술", "#바다와땅", "#부안명소", "#지도변천사", "#대규모프로젝트"], 
+   desc:"국립새만금간척박물관은 단군 이래 최대 토목 공사라 불리는 새만금 간척사업의 역사와 기술, 미래 가치를 조명하는 공간입니다. 간척의 역사와 원리, 새만금의 생태 환경 변화 등을 다양한 시청각 자료와 체험형 전시를 통해 흥미롭게 전달합니다.", 
+   price:"무료", hours:"10:00-17:30", closed:"월요일", phone:"063-580-5100", parking:"무료", conv:"수유실"},
+  
+  {id:7, name:"고부역사문화관", lat: 35.619079, lng: 126.771299, homepage:"https://www.jeongeup.go.kr/culture/index.jeongeup", area:"정읍시", type:"박물관", addr:"정읍시 고부면 영주로 530", theme:"역사", 
+   tags:["#동학농민혁명", "#전봉준", "#고부봉기", "#농민항쟁", "#정읍역사", "#민주주의성지"], 
+   desc:"고부역사문화관은 동학농민혁명의 도화선이 된 고부 봉기의 역사적 배경과 전개 과정을 생생하게 보여주는 곳입니다. 당시 농민들의 생활상과 부패한 관리들의 수탈, 그리고 이에 맞서 일어난 농민군들의 뜨거운 함성을 다양한 사료를 통해 재조명합니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"토, 일", phone:"063-539-7242", parking:"-", conv:"-"},
+  
+  {id:8, name:"고창고인돌박물관", lat: 35.4417, lng: 126.6524, homepage:"https://www.gochang.go.kr/gcdolmen", area:"고창군", type:"박물관", addr:"고창군 고창읍 고인돌공원길 74", theme:"고인돌", 
+   tags:["#유네스코세계유산", "#청동기시대", "#거석문화", "#선사체험", "#고창여행", "#야외박물관"], 
+   desc:"유네스코 세계문화유산으로 지정된 고창 고인돌 유적지에 위치한 전문 박물관입니다. 청동기 시대의 생활상과 고인돌 축조 과정을 알기 쉽게 전시하고 있으며, 야외 전시장에서는 다양한 형태의 고인돌을 직접 관찰하고 선사시대 마을을 체험할 수 있습니다.", 
+   price:"성인 3,000원", hours:"9:00-18:00", closed:"월요일", phone:"063-560-8666", parking:"무료", conv:"휠체어대여"},
+  
+  {id:9, name:"고창판소리박물관", lat: 35.4323, lng: 126.7025, homepage:"https://www.gochang.go.kr/pansori", area:"고창군", type:"박물관", addr:"고창군 고창읍 동리로100", theme:"판소리", 
+   tags:["#동리신재효", "#판소리여섯마당", "#소리꾼", "#국악", "#유네스코인류무형유산", "#전통음악"], 
+   desc:"판소리의 이론을 정립하고 후원했던 동리 신재효 선생의 고택 옆에 세워진 박물관입니다. 판소리의 역사와 명창들의 소리, 관련 유물들을 전시하여 우리 소리의 멋과 흥을 느낄 수 있는 공간입니다. 다양한 국악 체험 프로그램도 운영됩니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-560-8061", parking:"무료", conv:"음성안내기"},
+  
+  {id:10, name:"군산근대역사박물관", lat: 35.990822, lng: 126.712119, homepage:"https://museum.gunsan.go.kr", area:"군산시", type:"박물관", addr:"군산시 해망로 240", theme:"근대역사", 
+   tags:["#군산시간여행", "#근대문화유산", "#일제강점기", "#항구도시", "#1930년대", "#레트로감성"], 
+   desc:"군산의 근대 역사와 해양 문화를 주제로 한 박물관으로, '역사는 미래가 된다'는 모토 아래 운영됩니다. 1930년대 군산의 거리를 재현한 근대생활관이 특히 인기가 높으며, 일제강점기 수탈의 아픔과 항거의 역사를 동시에 배울 수 있는 교육의 장입니다.", 
+   price:"성인 2,000원", hours:"9:00-18:00", closed:"1월 1일", phone:"063-454-7872", parking:"무료", conv:"물품보관함"},
+  
+  {id:11, name:"남원향토박물관", lat: 35.401615, lng: 127.387068, homepage:"https://www.namwon.go.kr/tour/index.do", area:"남원시", type:"박물관", addr:"남원시 양림길 14-9", theme:"향토역사", 
+   tags:["#춘향전", "#남원문화", "#민속유물", "#사랑의도시", "#광한루원인근", "#전통생활사"], 
+   desc:"남원향토박물관은 춘향테마파크 내에 위치하며 남원의 역사, 민속, 문화를 종합적으로 전시합니다. 춘향전 관련 자료뿐만 아니라 남원 지역에서 출토된 고고학적 유물과 조상들의 생활상을 보여주는 다양한 민속품을 통해 남원의 정체성을 확인할 수 있습니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-620-5799", parking:"무료", conv:"기념품점"},
+  
+  {id:12, name:"대한민국술테마박물관", lat: 35.726164, lng: 127.136255, homepage:"https://sulmuseum.wanju.go.kr", area:"완주군", type:"박물관", addr:"완주군 구이면 덕천전원길 232-58", theme:"술", 
+   tags:["#전통주", "#발효과학", "#술빚기체험", "#우리술", "#완주명소", "#주류역사"], 
+   desc:"5만여 점의 유물을 소장한 국내 최대 규모의 술 테마 박물관입니다. 우리 술의 역사와 제조 과정, 세계의 다양한 술 문화를 입체적으로 전시하고 있습니다. 직접 술을 빚어보는 체험 프로그램과 시음 행사가 있어 애주가는 물론 가족 단위 관람객에게도 즐거운 경험을 선사합니다.", 
+   price:"성인 2,000원", hours:"9:00-18:00", closed:"월요일", phone:"063-290-3847", parking:"무료", conv:"시음장"},
+  
+  {id:13, name:"(전북)동학농민혁명기념관", lat: 35.6304, lng: 126.83, homepage:"https://www.1894.or.kr", area:"정읍시", type:"박물관", addr:"정읍시 덕천면 동학로 742", theme:"역사", 
+   tags:["#동학농민혁명", "#황토현전적지", "#전봉준", "#사람이하늘이다", "#반봉건반외세", "#민족운동"], 
+   desc:"동학농민혁명군이 관군을 상대로 첫 승리를 거둔 황토현 전적지에 건립된 기념관입니다. 혁명의 전개 과정과 역사적 의의를 기리는 다양한 전시물과 기록화를 통해, 자주와 평등을 외쳤던 농민들의 숭고한 희생정신을 되새길 수 있습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-530-9454", parking:"무료", conv:"도서실"},
+  
+  {id:14, name:"마한박물관", lat: 36.001978, lng: 127.060449, homepage:"https://www.iksan.go.kr/mahan", area:"익산시", type:"박물관", addr:"익산시 금마면 고도9길 41-14", theme:"역사", 
+   tags:["#고대국가마한", "#독널무덤", "#익산역사", "#서동공원", "#금마저수지", "#고고학체험"], 
+   desc:"백제 이전에 익산 지역을 중심으로 꽃피웠던 마한의 역사와 문화를 재조명하는 박물관입니다. 서동공원 내에 위치하며, 마한 성립기의 토기, 옥, 독널무덤 등 고고학적 발굴 성과를 알기 쉽게 전시하여 고대 익산의 역사적 뿌리를 보여줍니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-859-4633", parking:"무료", conv:"야외전시장"},
+  
+  {id:15, name:"무주곤충박물관", lat: 36.013255, lng: 127.758738, homepage:"https://tour.muju.go.kr/bandiland", area:"무주군", type:"박물관", addr:"무주군 설천면 무설로 1324", theme:"자연", 
+   tags:["#반디랜드", "#반딧불이", "#희귀곤충", "#생태학습", "#아이들천국", "#무주가볼만한곳"], 
+   desc:"청정 무주의 반디랜드 내에 위치한 곤충 전문 박물관으로, 전 세계의 희귀 곤충 표본과 화석을 전시하고 있습니다. 돔 영상관, 생태 온실 등 다양한 시설을 갖추고 있어 아이들이 자연과 교감하며 생명의 신비를 배울 수 있는 최적의 생태 학습장입니다.", 
+   price:"성인 5,000원", hours:"09:00-18:00", closed:"월요일", phone:"063-324-1155", parking:"무료", conv:"매점"},
+  
+  {id:16, name:"백정기의사기념관", lat: 35.652423, lng: 126.783023, homepage:"https://www.jeongeup.go.kr/culture/index.jeongeup?menuCd=DOM_000000602004002000", area:"정읍시", type:"박물관", addr:"정읍시 영원면 영원로 1049", theme:"역사", 
+   tags:["#독립운동가", "#구파백정기", "#육삼정의거", "#항일투쟁", "#애국지사", "#보훈시설"], 
+   desc:"윤봉길, 이봉창 의사와 함께 '3의사'로 불리는 구파 백정기 의사의 항일 독립 정신을 기리는 기념관입니다. 상하이 육삼정 의거를 주도했던 의사의 생애와 업적을 전시하고 있으며, 사당과 동상이 함께 조성되어 있어 숭고한 애국정신을 추모할 수 있습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-539-5237", parking:"무료", conv:"영상실"},
+  
+  {id:17, name:"백제왕궁박물관", lat: 35.97121, lng: 127.055843, homepage:"https://www.iksan.go.kr/wg", area:"익산시", type:"박물관", addr:"익산시 왕궁면 궁성로 666", theme:"역사", 
+   tags:["#왕궁리유적", "#유네스코세계유산", "#백제무왕", "#ICT체험", "#역사관광", "#백제왕궁"], 
+   desc:"유네스코 세계유산인 익산 왕궁리 유적(사적 제408호)을 소개하고 보존하기 위해 건립된 박물관입니다. 왕궁에서 출토된 다양한 유물을 전시함과 동시에, ICT 기술을 활용한 가상현실(VR), 홀로그램 체험을 통해 1400년 전 화려했던 백제 왕궁의 모습을 생생하게 경험할 수 있습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-859-4631", parking:"무료", conv:"가상체험관"},
+  
+  {id:18, name:"벽골제농경문화박물관", lat: 35.755447, lng: 126.853678, homepage:"https://www.gimje.go.kr/tour/index.gimje", area:"김제시", type:"박물관", addr:"김제시 부량면 벽골제로 442", theme:"문화", 
+   tags:["#우리나라최초저수지", "#농경사회", "#김제지평선", "#농기구전시", "#전통문화체험", "#벽골제"], 
+   desc:"우리나라에서 가장 오래된 저수지인 벽골제(사적 제111호) 단지 내에 위치하여, 전통 농경 사회의 역사와 문화를 한눈에 볼 수 있는 박물관입니다. 각종 농기구와 생활 민속 자료 전시뿐만 아니라, 야외에서는 짚풀 공예, 한복 입기 등 다양한 전통문화 체험이 가능합니다.", 
+   price:"성인 3,000원", hours:"09:00-18:00", closed:"월요일", phone:"063-540-4993", parking:"무료", conv:"한복체험"},
+  
+  {id:19, name:"보석박물관", lat: 35.99055, lng: 127.102616, homepage:"https://www.iksan.go.kr/jewel", area:"익산시", type:"박물관", addr:"익산시 왕궁면 호반로 8", theme:"기술", 
+   tags:["#보석의도시익산", "#희귀보석", "#주얼리", "#공룡박물관", "#이색박물관", "#체험학습"], 
+   desc:"'보석의 도시' 익산을 상징하는 국내 유일의 보석 전문 박물관입니다. 11만여 점의 진귀한 보석과 원석을 전시하여 보석의 역사와 아름다움을 감상할 수 있습니다. 바로 옆에는 아이들이 좋아하는 화석전시관(다이노키즈월드)이 있어 온 가족이 함께 즐기기에 좋습니다.", 
+   price:"성인 3,000원", hours:"10:00-18:00", closed:"월요일", phone:"063-859-4641", parking:"무료", conv:"주얼팰리스"},
+  
+  {id:20, name:"부안청자박물관", lat: 35.611676, lng: 126.651464, homepage:"https://www.buan.go.kr/buancela", area:"부안군", type:"박물관", addr:"부안군 보안면 청자로 1493", theme:"예술", 
+   tags:["#고려상감청자", "#도자기체험", "#부안요", "#도자문화역사", "#명품청자", "#부안여행"], 
+   desc:"고려 상감청자의 주요 생산지였던 부안 유천리 도요지에 건립된 박물관입니다. 진품 청자 유물 전시를 통해 고려청자의 우수성을 알리고 있으며, 관람객이 직접 흙을 빚어 도자기를 만들어볼 수 있는 도예 체험 프로그램을 운영하여 오감으로 느끼는 관람을 제공합니다.", 
+   price:"성인 3,000원", hours:"10:00-18:00", closed:"월요일", phone:"063-580-3964", parking:"무료", conv:"도자체험실"},
+  
+  {id:21, name:"순창장류박물관", lat: 35.369759, lng: 127.11117, homepage:"https://www.sunchang.go.kr/tour/index.sunchang", area:"순창군", type:"박물관", addr:"순창군 순창읍 장류로 43", theme:"문화", 
+   tags:["#고추장의고장", "#발효식품", "#임금님진상", "#장독대", "#전통식문화", "#순창발효테마파크"], 
+   desc:"'고추장의 고장' 순창에 위치하여 한국의 전통 장류 문화를 체계적으로 전시한 공간입니다. 임금님에게 진상되던 순창 고추장의 유래와 제조 과정, 그리고 우리 식문화 속 발효의 지혜를 엿볼 수 있습니다. 발효테마파크 내에 있어 다양한 식문화 체험과 연계가 가능합니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-650-1627", parking:"무료", conv:"체험관"},
+  
+  {id:22, name:"신평면 생활사박물관", lat: 35.657192, lng: 127.224076, homepage:"https://www.imsil.go.kr/tour/index.imsil", area:"임실군", type:"박물관", addr:"임실군 신평면 석등슬치로 369", theme:"지역", 
+   tags:["#마을박물관", "#레트로", "#근현대생활사", "#농촌추억", "#할머니집생각", "#임실여행"], 
+   desc:"지역 주민들이 자발적으로 기증한 손때 묻은 생활 유물들을 모아 만든 아기자기한 마을 박물관입니다. 지금은 사라져가는 농촌의 옛 생활용품, 농기구, 추억의 물건들을 통해 기성세대에게는 향수를, 자라나는 세대에게는 살아있는 역사 교육을 선물합니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"주말", phone:"063-640-4121", parking:"무료", conv:"-"},
+  
+  {id:23, name:"어진박물관", lat: 35.815, lng: 127.1498, homepage:"http://www.jeonju.go.kr/jeonjumuseum", area:"전주시", type:"박물관", addr:"전주시 완산구 태조로 44", theme:"역사", 
+   tags:["#태조이성계", "#경기전", "#전주한옥마을", "#왕의초상화", "#어가행렬", "#조선왕실문화"], 
+   desc:"전주 한옥마을 경기전 내부에 위치한 국내 유일의 태조 어진(왕의 초상화) 전문 박물관입니다. 국보 제317호인 태조 어진 진본을 보존·관리하고 있으며, 어진 봉안 행렬을 재현한 닥종이 인형 전시와 왕실 의례 문화를 통해 조선 왕실의 위엄을 느낄 수 있습니다.", 
+   price:"성인 3,000원", hours:"09:00-19:00", closed:"1월 1일", phone:"063-231-0090", parking:"유료", conv:"물품보관소"},
+  
+  {id:24, name:"일제강점기군산역사관", lat: 35.982281, lng: 126.707863, homepage:"https://museum.gunsan.go.kr", area:"군산시", type:"박물관", addr:"군산시 동국사길 21", theme:"역사", 
+   tags:["#다크투어리즘", "#수탈의역사", "#항일정신", "#동국사인근", "#역사교훈", "#군산시간여행"], 
+   desc:"일제강점기 군산 지역의 수탈사와 이에 맞선 우리 민족의 항쟁사를 기록한 공간입니다. 동국사 가는 길목에 위치하며, 당시의 사진 자료와 유물을 통해 아픈 역사를 기억하고 평화의 소중함을 일깨워주는 의미 있는 장소입니다.", 
+   price:"성인 1,000원", hours:"09:00-18:00", closed:"월요일", phone:"063-467-0815", parking:"-", conv:"-"},
+  
+  {id:25, name:"입점리고분전시관", lat: 36.0461, lng: 126.8725, homepage:"https://www.iksan.go.kr/ipjeom", area:"익산시", type:"박물관", addr:"익산시 웅포면 입점고분길 80", theme:"역사", 
+   tags:["#백제고분", "#금동신발", "#웅포관광지", "#백제귀족무덤", "#고고학탐방", "#역사산책"], 
+   desc:"익산 웅포면 입점리 고분군에서 출토된 유물을 전시하는 곳입니다. 금동관모와 금동신발 등 백제 귀족이나 왕족의 것으로 추정되는 화려한 유물들이 발견되어 익산 지역이 백제 역사에서 중요한 위치를 차지했음을 증명합니다. 야외에는 고분 모형이 조성되어 있어 산책하듯 관람하기 좋습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-859-4634", parking:"무료", conv:"-"},
+  
+  {id:26, name:"전북특별자치도 산림박물관", lat: 35.479552, lng: 126.924805, homepage:"https://www.jbfm.or.kr", area:"순창군", type:"박물관", addr:"순창군 복흥면 추령로 1777", theme:"자연", 
+   tags:["#숲체험", "#산림문화", "#내장산자락", "#목재문화", "#자연학습", "#힐링공간"], 
+   desc:"내장산 자락에 위치한 전북산림박물관은 숲의 생태와 역사, 목재의 이용 등 산림에 관한 모든 것을 담고 있습니다. 웅장한 목조 건축물 자체가 볼거리이며, 다양한 목공예품 전시와 숲 해설 프로그램을 통해 자연과 인간의 공존을 배울 수 있는 생태 교육장입니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-290-5517", parking:"무료", conv:"-"},
+  
+  {id:27, name:"전주역사박물관", lat: 35.8011, lng: 127.0933, homepage:"https://www.jeonju.go.kr/jeonjumuseum", area:"전주시", type:"박물관", addr:"전주시 완산구 쑥고개로 259", theme:"역사", 
+   tags:["#전주역사", "#후백제", "#동학", "#지역사연구", "#전주정신", "#특별전시"], 
+   desc:"선사시대부터 근현대까지 전주의 유구한 역사와 문화를 총망라한 지역사 전문 박물관입니다. 후백제 견훤왕, 조선왕조의 발상지, 동학농민혁명의 중심지로서 전주의 정체성을 깊이 있게 탐구할 수 있는 상설 전시와 다채로운 기획 전시가 열립니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-228-6485", parking:"무료", conv:"-"},
+  
+  {id:28, name:"전주전통술박물관", lat: 35.816918, lng: 127.153511, homepage:"http://urisul.net", area:"전주시", type:"박물관", addr:"전주시 완산구 한지길 74", theme:"문화", 
+   tags:["#가양주", "#술빚기", "#전주한옥마을코스", "#전통주체험", "#이강주", "#모주"], 
+   desc:"전주 한옥마을 내에 위치하여 집에서 술을 빚던 '가양주' 문화를 계승하고 알리는 공간입니다. 전통 술이 만들어지는 과정을 관람하고, 직접 막걸리나 모주를 걸러보는 체험을 할 수 있습니다. 고즈넉한 한옥에서 우리 술의 향기에 취해보는 특별한 시간을 제공합니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-287-6305", parking:"-", conv:"-"},
+  
+  {id:29, name:"정읍시립박물관", lat: 35.527827, lng: 126.894425, homepage:"https://www.jeongeup.go.kr/museum", area:"정읍시", type:"박물관", addr:"정읍시 내장산로 370-12", theme:"지역", 
+   tags:["#정읍사", "#내장산", "#백제가요", "#지역문화유산", "#고운최치원", "#정읍관광"], 
+   desc:"현존하는 유일한 백제 가요인 '정읍사'와 단풍 명소 내장산을 품은 정읍의 역사와 문화를 소개합니다. 정읍사 관련 전시실과 농악, 지역의 역사적 인물들을 조명하는 전시를 통해 정읍의 과거와 현재를 잇는 문화 거점 역할을 하고 있습니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-539-6791", parking:"무료", conv:"-"},
+  
+  {id:30, name:"진안가위박물관", lat: 35.765951, lng: 127.415058, homepage:"https://www.jinan.go.kr/scissormuseum", area:"진안군", type:"박물관", addr:"진안군 진안읍 마이산로 258", theme:"문화", 
+   tags:["#세계유일", "#가위역사", "#마이산", "#이색박물관", "#생활도구", "#디자인"], 
+   desc:"마이산 자락에 위치한 세계 유일의 가위 테마 박물관입니다. 한국과 동양, 서양의 희귀한 가위 1,500여 점을 소장하고 있으며, 가위의 역사와 형태, 기능의 변천사를 흥미롭게 보여줍니다. 우리 생활과 밀접한 도구인 가위의 새로운 예술적 가치를 발견할 수 있습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-430-8744", parking:"무료", conv:"-"},
+  
+  {id:31, name:"진안역사박물관", lat: 35.772462, lng: 127.416694, homepage:"https://www.jinan.go.kr/museum", area:"진안군", type:"박물관", addr:"진안군 진안읍 내사양길 7", theme:"역사", 
+   tags:["#용담댐", "#수몰지구", "#마이산문화", "#진안고원", "#지역생활사", "#기록유산"], 
+   desc:"진안의 자연환경과 역사, 문화를 종합적으로 보여주는 박물관입니다. 용담댐 건설로 수몰된 지역의 유물과 생활상을 보존·전시하여 실향민들의 향수를 달래고, 지역 주민과 관광객들에게 진안 고유의 전통문화를 알리는 역할을 하고 있습니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-430-8086", parking:"무료", conv:"-"},
+  
+  {id:32, name:"장수역사전시관", lat: 35.730355, lng: 127.588448, homepage:"https://www.jangsu.go.kr", area:"장수군", type:"박물관", addr:"장수군 장계면 방천길 11", theme:"역사", 
+   tags:["#가야문화", "#장수사과", "#논개", "#지역사", "#향토유물", "#작은박물관"], 
+   desc:"장수 지역의 역사와 문화를 소박하게 담아낸 전시관입니다. 장수 가야의 고분군에서 출토된 유물과 지역 주민들의 생활 민속 자료를 통해 장수의 옛 모습과 변화 과정을 살펴볼 수 있습니다. 지역의 정체성을 지키고 알리는 소중한 공간입니다.", 
+   price:"무료", hours:"9:00-17:00", closed:"월요일", phone:"063-350-1745", parking:"무료", conv:"수유실"},
+  
+  {id:33, name:"금산사 성보박물관", lat: 35.72256, lng: 127.052697, homepage:"http://www.geumsansa.org", area:"김제시", type:"박물관", addr:"김제시 금산면 모악15길 1", theme:"종교", 
+   tags:["#미륵신앙", "#불교미술", "#국보사찰", "#모악산", "#템플스테이", "#성보문화재"], 
+   desc:"호남의 대표적인 고찰 금산사에 전해 내려오는 귀중한 불교 문화재를 보존·전시하는 성보박물관입니다. 불상, 불화, 공예품 등 다양한 성보들을 통해 천년 고찰의 역사와 불교 미술의 정수를 감상할 수 있으며, 모악산의 수려한 풍광과 어우러져 평온함을 줍니다.", 
+   price:"무료", hours:"10:00-17:00", closed:"월요일", phone:"063-548-7844", parking:"무료", conv:"-"},
+  
+  {id:34, name:"전주시기독교근대역사기념관", lat: 35.814507, lng: 127.135373, homepage:"http://jjcmhm.or.kr", area:"전주시", type:"박물관", addr:"전주시 완산구 서원로 382", theme:"역사", 
+   tags:["#근대문화유산", "#선교역사", "#신흥학교", "#근대의료", "#기독교성지", "#예수병원"], 
+   desc:"전주 지역의 기독교 선교 역사와 근대 교육, 의료의 발전 과정을 조명하는 기념관입니다. 호남 최초의 서양식 병원인 예수병원의 역사와 근대화에 기여한 선교사들의 활동을 다양한 사료를 통해 살펴볼 수 있는 역사 교육의 장입니다.", 
+   price:"무료", hours:"9:00-17:00", closed:"일요일", phone:"063-230-8778", parking:"협소", conv:"-"},
+  
+  {id:35, name:"완주책박물관", lat: 35.907642, lng: 127.066101, homepage:"http://www.bookmuseum.co.kr", area:"완주군", type:"박물관", addr:"완주군 삼례읍 삼례역로 48-1", theme:"문화", 
+   tags:["#삼례문화예술촌", "#고서", "#책문화", "#레트로감성", "#인문학기행", "#북카페"], 
+   desc:"삼례문화예술촌 내에 위치한 책 전문 박물관으로, 옛 양곡 창고를 개조하여 만들었습니다. 희귀 고서와 교과서, 근현대 출판물 등 책의 역사를 보여주는 다양한 자료를 전시하고 있으며, 고즈넉한 분위기 속에서 책 문화를 즐길 수 있는 특별한 공간입니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"월요일", phone:"063-291-7820", parking:"무료", conv:"북카페"},
+  
+  {id:36, name:"원불교역사박물관", lat: 35.972764, lng: 126.951662, homepage:"http://museum.won.or.kr", area:"익산시", type:"박물관", addr:"익산시 익산대로 501", theme:"종교", 
+   tags:["#원불교성지", "#소태산대종사", "#근대종교", "#마음공부", "#종교문화", "#익산명소"], 
+   desc:"원불교 중앙총부 내에 위치하여 한국 자생 종교인 원불교의 창시자 소태산 박중빈 대종사의 생애와 교단의 발전사를 보여주는 박물관입니다. 다양한 유물과 기록물을 통해 한국 근현대 종교사와 정신문화를 이해할 수 있는 차분하고 경건한 공간입니다.", 
+   price:"무료", hours:"9:00-17:00", closed:"월요일", phone:"063-850-9700", parking:"무료", conv:"-"},
+  
+  {id:37, name:"전주한지박물관", lat: 35.848927, lng: 127.100229, homepage:"https://www.hanjimuseum.co.kr", area:"전주시", type:"박물관", addr:"전주시 덕진구 팔복로 59", theme:"문화", 
+   tags:["#전주한지", "#닥종이", "#한지뜨기체험", "#종이역사", "#전주제지", "#가족체험"], 
+   desc:"천 년을 가는 종이, 한지의 우수성과 역사를 알리는 국내 최초의 종이 전문 박물관입니다. 한지의 제작 과정을 살펴보고 다양한 한지 공예품을 감상할 수 있으며, 관람객이 직접 한지를 떠보는 무료 체험 프로그램을 운영하여 전주 여행의 필수 코스로 꼽힙니다.", 
+   price:"무료", hours:"09:00-17:00", closed:"일, 월", phone:"063-210-8103", parking:"무료", conv:"한지체험장"},
+  
+  {id:38, name:"천호성지가톨릭성물박물관", lat: 36.036952, lng: 127.129445, homepage:"http://chonho.catholic.or.kr", area:"완주군", type:"박물관", addr:"완주군 비봉면 천호성지길 124", theme:"종교", 
+   tags:["#천주교성지", "#순교자", "#세계성물", "#종교미술", "#순례길", "#마음의평화"], 
+   desc:"병인박해 당시 순교 성인들의 묘역이 있는 천호성지 내에 건립된 박물관입니다. 전 세계 다양한 가톨릭 성물과 예술품을 전시하여 종교적 경건함과 예술적 아름다움을 동시에 느낄 수 있습니다. 아름다운 자연 속에 자리 잡아 힐링과 묵상의 시간을 제공합니다.", 
+   price:"성인 2,000원", hours:"9:00-17:00", closed:"월요일", phone:"063-261-1004", parking:"무료", conv:"-"},
+  
+  {id:39, name:"충간공보물제651호박물관", lat: 36.026257, lng: 127.016227, homepage:"https://www.iksan.go.kr", area:"익산시", type:"박물관", addr:"익산시 삼기면 미륵산1길 8", theme:"역사", 
+   tags:["#연안이씨", "#이숭원", "#공신녹권", "#조선시대문서", "#가문역사", "#기록유산"], 
+   desc:"조선 세조 때 이시애의 난을 평정한 충간공 이숭원 선생의 공신녹권(보물 제651호)과 연안 이씨 가문의 유물을 보관·전시하는 곳입니다. 조선 시대 공신 책봉 과정과 가문의 역사를 보여주는 귀중한 고문서들을 통해 조선 중기의 사회상을 엿볼 수 있습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"일, 월", phone:"063-841-7277", parking:"무료", conv:"-"},
+  
+ {id:41, name:"카메라영상박물관", lat: 35.853068, lng: 127.206581, homepage:"http://www.cameramuseum.kr", area:"완주군", type:"박물관", addr:"완주군 소양면 대치로 202-3", theme:"기술",
+   tags:["#이색박물관", "#카메라역사", "#영상기기", "#사진문화", "#희귀카메라", "#엔틱"],
+   desc:"다양한 시대와 종류의 희귀 카메라 및 영상 기기를 한눈에 볼 수 있는 전문 박물관입니다. 카메라의 발전사와 영상 매체의 역사를 체험할 수 있으며, 앤틱한 분위기 속에서 사진 예술의 매력을 느낄 수 있는 공간입니다.",
+   price:"성인 3,000원", hours:"10:00-17:00", closed:"월요일", phone:"063-242-7001", parking:"무료", conv:"-"},
+
+  {id:42, name:"국립군산대학교 박물관", lat: 35.946783, lng: 126.681703, homepage:"https://museum.kunsan.ac.kr", area:"군산시", type:"박물관", addr:"군산시 대학로 558", theme:"교육", 
+   tags:["#대학박물관", "#군산역사", "#고고학발굴", "#지역문화연구", "#특별전시", "#캠퍼스투어"], 
+   desc:"군산대학교 내에 위치하여 군산 및 인근 도서 해양 지역의 역사와 문화를 전문적으로 연구하고 전시하는 박물관입니다. 선사시대 패총 유적부터 근대 역사 자료까지 폭넓은 유물을 소장하고 있으며, 지역 사회와 소통하는 다양한 문화 강좌와 기획 전시를 운영합니다.", 
+   price:"무료", hours:"10:00-17:00", closed:"월요일", phone:"063-469-4191", parking:"무료", conv:"-"},
+  
+  {id:43, name:"원광대학교 박물관", lat: 35.9691, lng: 126.9572, homepage:"https://museum.wku.ac.kr", area:"익산시", type:"박물관", addr:"익산시 익산대로 460", theme:"교육", 
+   tags:["#마한백제문화", "#무속신앙", "#민속자료", "#대학박물관", "#생활사", "#역사교육"], 
+   desc:"1968년 개관 이래 마한·백제 문화를 비롯한 호남 지역의 고고·역사·민속 자료를 방대하게 수집해 온 유서 깊은 대학 박물관입니다. 특히 무속 신앙 관련 자료와 생활 민속품 컬렉션이 돋보이며, 지역의 역사적 정체성을 규명하는 학술 연구의 중심지 역할을 하고 있습니다.", 
+   price:"무료", hours:"10:00-16:00", closed:"주말", phone:"063-850-5483", parking:"무료", conv:"-"},
+  
+  {id:44, name:"전북대학교 박물관", lat: 35.84546, lng: 127.126232, homepage:"https://museum.jbnu.ac.kr", area:"전주시", type:"박물관", addr:"전주시 덕진구 백제대로 567", theme:"교육", 
+   tags:["#전북대", "#고문서", "#기록문화", "#지역거점", "#역사관", "#문화강좌"], 
+   desc:"전북 지역의 거점 대학 박물관으로서 구석기 시대 유물부터 조선 시대 고문서에 이르기까지 3만여 점의 다양한 문화재를 소장하고 있습니다. 특히 전라북도 지역의 고대 문화와 생활사를 심도 있게 보여주는 상설 전시와 수준 높은 기획 전시로 지역민들에게 사랑받고 있습니다.", 
+   price:"무료", hours:"9:00-18:00", closed:"일요일", phone:"063-270-3488", parking:"유료", conv:"-"},
+  
+  {id:45, name:"전주대학교 박물관", lat: 35.809792, lng: 127.08713, homepage:"https://museum.jj.ac.kr/main.do;jsessionid=354A09ED152F4055F8F13F7092096F68", area:"전주시", type:"박물관", addr:"전주시 완산구 천잠로 303", theme:"교육", 
+   tags:["#기독교역사", "#호남민속", "#특성화박물관", "#선교사유물", "#교육프로그램"], 
+   desc:"전주대학교 박물관은 기독교 역사 자료와 호남 지역의 민속 유물을 특성화하여 수집·전시하고 있습니다. 구한말 선교사들의 활동상과 초기 한국 교회의 역사를 보여주는 귀중한 자료들과 함께, 우리 조상들의 삶이 담긴 민속품들을 통해 과거와 현재를 잇는 가교 역할을 합니다.", 
+   price:"무료", hours:"10:00-17:00", closed:"주말", phone:"063-220-2151", parking:"유료", conv:"-"},
+  
+  {id:46, name:"전북특별자치도립미술관", lat: 35.727566, lng: 127.106946, homepage:"https://www.jma.go.kr", area:"완주군", type:"미술관", addr:"완주군 구이면 모악산길 111-6", theme:"예술", 
+   tags:["#모악산", "#현대미술", "#기획전시", "#문화복합공간", "#도립미술관", "#예술산책"], 
+   desc:"모악산 자락의 수려한 자연 속에 위치한 전북 대표 미술관입니다. 전북 미술의 역사와 흐름을 조명하는 전시뿐만 아니라, 세계적인 현대 미술 기획전을 꾸준히 개최하여 도민들에게 수준 높은 문화 향유 기회를 제공합니다. 야외 조각 공원과 어우러져 예술과 휴식을 동시에 즐길 수 있습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-290-6888", parking:"무료", conv:"카페, 수유실"},
+  
+  {id:47, name:"남원시립김병종미술관", lat: 35.398729, lng: 127.389529, homepage:"https://nkam.more.co.kr", area:"남원시", type:"미술관", addr:"남원시 함파우길 65-14", theme:"예술", 
+   tags:["#김병종", "#화첩기행", "#전원형미술관", "#건축미", "#문학적미술", "#남원핫플"], 
+   desc:"남원 출신의 세계적인 화가 김병종 작가가 기증한 작품을 기반으로 설립된 공립 미술관입니다. 자연을 품은 아름다운 건축물 자체가 하나의 예술 작품이며, 작가의 대표작인 '생명의 노래' 시리즈 등을 감상할 수 있습니다. 미술과 문학이 어우러진 숲속의 힐링 공간으로 많은 사랑을 받고 있습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-620-5660", parking:"무료", conv:"북카페, 엘리베이터"},
+  
+  {id:48, name:"벽천미술관", lat: 35.752526, lng: 126.853567, homepage:"https://www.gimje.go.kr/tour/index.gimje", area:"김제시", type:"미술관", addr:"김제시 부량면 벽골제로 442", theme:"예술", 
+   tags:["#한국화", "#벽천나상목", "#전통회화", "#산수화", "#벽골제단지", "#예술혼"], 
+   desc:"김제 출신의 한국화 거장 벽천 나상목 선생의 예술혼을 기리기 위해 벽골제 단지 내에 건립된 미술관입니다. 선생이 기증한 한국화 작품과 스케치, 유품 등을 전시하고 있으며, 전통 산수화의 맥을 잇는 묵직하고 깊이 있는 작품 세계를 감상할 수 있습니다.", 
+   price:"무료", hours:"10:00-17:00", closed:"월요일", phone:"063-540-4985", parking:"무료", conv:"-"},
+  
+  {id:49, name:"순창공립옥천골미술관", lat: 35.374016, lng: 127.144428, homepage:"https://www.sunchang.go.kr", area:"순창군", type:"미술관", addr:"순창군 순창읍 남계로 81", theme:"예술", 
+   tags:["#도시재생", "#양곡창고변신", "#문화예술공간", "#지역작가", "#주민친화", "#순창미술"], 
+   desc:"오랫동안 쓰지 않던 양곡 창고를 리모델링하여 만든 순창군의 문화 예술 공간입니다. 옛 건물의 흔적을 살린 독특한 분위기 속에서 다양한 기획 전시와 문화 예술 프로그램이 열리며, 지역 주민과 작가들이 소통하는 열린 미술관을 지향합니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-650-1638", parking:"무료", conv:"-"},
+  
+  {id:50, name:"익산예술의전당미술관", lat: 35.951816, lng: 126.98745, homepage:"https://arts.iksan.go.kr", area:"익산시", type:"미술관", addr:"익산시 동서로 490", theme:"예술", 
+   tags:["#복합문화공간", "#현대미술", "#기획전", "#익산문화", "#공연과전시", "#예술체험"], 
+   desc:"익산 예술의전당 내에 위치한 대규모 미술관으로, 회화, 조각, 미디어 아트 등 다양한 장르를 아우르는 기획 전시를 선보입니다. 공연장과 함께 있어 익산 시민들의 문화 갈증을 해소하는 복합 문화 예술 공간 역할을 톡톡히 하고 있습니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-859-3254", parking:"무료", conv:"-"},
+  
+  {id:51, name:"정읍시립미술관", lat: 35.552275, lng: 126.861578, homepage:"https://www.jeongeup.go.kr/culture/index.jeongeup", area:"정읍시", type:"미술관", addr:"정읍시 시기4길 7", theme:"예술", 
+   tags:["#구군청사", "#리모델링", "#기획전시", "#미술체험", "#정읍문화", "#시민공간"], 
+   desc:"옛 정읍 군청사 건물을 리모델링하여 탄생한 시민 친화적 미술관입니다. 근대 건축물의 정취를 간직한 공간에서 수준 높은 기획전과 다양한 미술 체험 교육 프로그램을 운영하여, 누구나 쉽게 예술을 접하고 즐길 수 있는 열린 공간입니다.", 
+   price:"무료", hours:"10:00-18:00", closed:"월요일", phone:"063-539-6420", parking:"무료", conv:"엘리베이터"},
+  
+  {id:52, name:"최북미술관", lat: 36.002896, lng: 127.665295, homepage:"https://tour.muju.go.kr/tour", area:"무주군", type:"미술관", addr:"무주군 무주읍 최북로 15", theme:"예술", 
+   tags:["#호생관최북", "#조선화가", "#진경산수", "#괴석도", "#무주예술", "#문학관옆"], 
+   desc:"조선 후기의 기이하고 독창적인 화가 호생관 최북의 예술혼을 기리는 작가 미술관입니다. 최북의 진품 산수화와 영인본을 전시하고 있으며, 그의 파란만장한 생애와 예술 세계를 조명합니다. 김환태 문학관과 나란히 있어 문학과 미술을 함께 즐길 수 있습니다.", 
+   price:"무료", hours:"09:00-18:00", closed:"월요일", phone:"063-320-5636", parking:"무료", conv:"-"},
+];
+
+const PHOTO_MAP = {
+        "국립익산박물관": ["images/국립익산박물관.png","images/국립익산박물관2.png","images/국립익산박물관3.png","images/국립익산박물관4.png","images/국립익산박물관5.png","images/국립익산박물관6.png","images/국립익산박물관7.png"],
+        "국립전주박물관": ["images/국립전주박물관.png","images/국립전주박물관2.png","images/국립전주박물관3.png","images/국립전주박물관4.png","images/국립전주박물관5.png","images/국립전주박물관6.png","images/국립전주박물관7.png"],
+        "국립무형유산원": ["images/국립무형유산원.png","images/국립무형유산원2.png","images/국립무형유산원3.png","images/국립무형유산원4.png","images/국립무형유산원5.png","images/국립무형유산원6.png","images/국립무형유산원7.png"],
+        "국립태권도박물관": ["images/국립태권도박물관.png","images/국립태권도박물관2.png","images/국립태권도박물관3.png","images/국립태권도박물관4.png","images/국립태권도박물관5.png","images/국립태권도박물관6.png","images/국립태권도박물관7.png"],
+        "국립전사박물관": ["images/국립전사박물관.png","images/국립전사박물관2.png","images/국립전사박물관3.png","images/국립전사박물관4.png","images/국립전사박물관5.png"],
+        "국립새만금간척박물관": ["images/국립새만금간척박물관.png","images/국립새만금간척박물관2.png","images/국립새만금간척박물관3.png","images/국립새만금간척박물관4.png","images/국립새만금간척박물관5.png","images/국립새만금간척박물관6.png","images/국립새만금간척박물관7.png"],
+        "고부역사문화관": ["images/고부역사문화관.png","images/고부역사문화관2.png"],
+        "고창고인돌박물관": ["images/고창고인돌박물관.png","images/고창고인돌박물관2.png","images/고창고인돌박물관3.png","images/고창고인돌박물관4.png","images/고창고인돌박물관5.png","images/고창고인돌박물관6.png","images/고창고인돌박물관7.png"],
+        "고창판소리박물관": ["images/고창판소리박물관.png","images/고창판소리박물관2.png","images/고창판소리박물관3.png","images/고창판소리박물관4.png","images/고창판소리박물관5.png","images/고창판소리박물관6.png"],
+        "군산근대역사박물관": ["images/군산근대역사박물관.png","images/군산근대역사박물관2.png","images/군산근대역사박물관3.png","images/군산근대역사박물관4.png","images/군산근대역사박물관5.png","images/군산근대역사박물관6.png","images/군산근대역사박물관7.png"],
+        "남원향토박물관": ["images/남원향토박물관.png","images/남원향토박물관2.png","images/남원향토박물관3.png","images/남원향토박물관4.png","images/남원향토박물관5.png","images/남원향토박물관6.png","images/남원향토박물관7.png"],
+        "대한민국술테마박물관": ["images/대한민국술테마박물관.png","images/대한민국술테마박물관2.png","images/대한민국술테마박물관3.png","images/대한민국술테마박물관4.png","images/대한민국술테마박물관5.png","images/대한민국술테마박물관6.png"],
+        "(전북)동학농민혁명기념관": ["images/(전북)동학농민혁명기념관.png","images/(전북)동학농민혁명기념관2.png","images/(전북)동학농민혁명기념관3.png","images/(전북)동학농민혁명기념관4.png","images/(전북)동학농민혁명기념관5.png","images/(전북)동학농민혁명기념관6.png"],
+        "마한박물관": ["images/마한박물관.png","images/마한박물관2.png","images/마한박물관3.png","images/마한박물관4.png","images/마한박물관5.png","images/마한박물관6.png","images/마한박물관7.png"],
+        "무주곤충박물관": ["images/무주곤충박물관.png","images/무주곤충박물관2.png","images/무주곤충박물관3.png","images/무주곤충박물관4.png","images/무주곤충박물관5.png","images/무주곤충박물관6.png","images/무주곤충박물관7.png"],
+        "백정기의사기념관": ["images/백정기의사기념관.png","images/백정기의사기념관2.png","images/백정기의사기념관3.png","images/백정기의사기념관4.png","images/백정기의사기념관5.png","images/백정기의사기념관6.png","images/백정기의사기념관7.png"],
+        "백제왕궁박물관": ["images/백제왕궁박물관.png","images/백제왕궁박물관2.png","images/백제왕궁박물관3.png","images/백제왕궁박물관4.png","images/백제왕궁박물관5.png","images/백제왕궁박물관6.png","images/백제왕궁박물관7.png"],
+        "벽골제농경문화박물관": ["images/벽골제농경문화박물관.png","images/벽골제농경문화박물관2.png","images/벽골제농경문화박물관3.png","images/벽골제농경문화박물관4.png","images/벽골제농경문화박물관5.png","images/벽골제농경문화박물관6.png"],
+        "보석박물관": ["images/보석박물관.png","images/보석박물관2.png","images/보석박물관3.png","images/보석박물관4.png","images/보석박물관5.png","images/보석박물관6.png","images/보석박물관7.png"],
+        "부안청자박물관": ["images/부안청자박물관.png","images/부안청자박물관2.png","images/부안청자박물관3.png","images/부안청자박물관4.png","images/부안청자박물관5.png","images/부안청자박물관6.png","images/부안청자박물관7.png"],
+        "순창장류박물관": ["images/순창장류박물관.png","images/순창장류박물관2.png","images/순창장류박물관3.png","images/순창장류박물관4.png","images/순창장류박물관5.png"],
+        "신평면 생활사박물관": ["images/신평면 생활사박물관.png","images/신평면 생활사박물관2.png","images/신평면 생활사박물관3.png","images/신평면 생활사박물관4.png","images/신평면 생활사박물관5.png"],
+        "어진박물관": ["images/어진박물관.png","images/어진박물관2.png","images/어진박물관3.png","images/어진박물관4.png","images/어진박물관5.png","images/어진박물관6.png","images/어진박물관7.png"],
+        "일제강점기군산역사관": ["images/일제강점기군산역사관.png","images/일제강점기군산역사관2.png","images/일제강점기군산역사관3.png","images/일제강점기군산역사관4.png","images/일제강점기군산역사관5.png"],
+        "입점리고분전시관": ["images/입점리고분전시관.png","images/입점리고분전시관2.png","images/입점리고분전시관3.png","images/입점리고분전시관4.png","images/입점리고분전시관5.png"],
+        "전북특별자치도 산림박물관": ["images/전북특별자치도 산림박물관.png","images/전북특별자치도 산림박물관2.png","images/전북특별자치도 산림박물관3.png","images/전북특별자치도 산림박물관4.png","images/전북특별자치도 산림박물관5.png"],
+        "전주역사박물관": ["images/전주역사박물관.png","images/전주역사박물관2.png","images/전주역사박물관3.png","images/전주역사박물관4.png","images/전주역사박물관5.png","images/전주역사박물관6.png","images/전주역사박물관7.png","images/전주역사박물관8.png","images/전주역사박물관9.png"],
+        "전주전통술박물관": ["images/전주전통술박물관.png","images/전주전통술박물관2.png","images/전주전통술박물관3.png","images/전주전통술박물관4.png","images/전주전통술박물관5.png","images/전주전통술박물관6.png"],
+        "정읍시립박물관": ["images/정읍시립박물관.png","images/정읍시립박물관2.png","images/정읍시립박물관3.png","images/정읍시립박물관4.png","images/정읍시립박물관5.png","images/정읍시립박물관6.png","images/정읍시립박물관7.png","images/정읍시립박물관8.png"],
+        "진안가위박물관": ["images/진안가위박물관.png","images/진안가위박물관2.png","images/진안가위박물관3.png","images/진안가위박물관4.png","images/진안가위박물관5.png"],
+        "진안역사박물관": ["images/진안역사박물관.png","images/진안역사박물관2.png","images/진안역사박물관3.png","images/진안역사박물관4.png","images/진안역사박물관5.png","images/진안역사박물관6.png","images/진안역사박물관7.png"],
+        "장수역사전시관": ["images/장수역사전시관.png","images/장수역사전시관2.png","images/장수역사전시관3.png","images/장수역사전시관4.png","images/장수역사전시관5.png","images/장수역사전시관6.png"],
+        "금산사 성보박물관": ["images/금산사 성보박물관.png","images/금산사 성보박물관2.png","images/금산사 성보박물관3.png","images/금산사 성보박물관4.png"],
+        "전주시기독교근대역사기념관": ["images/전주시기독교근대역사기념관.png","images/전주시기독교근대역사기념관2.png","images/전주시기독교근대역사기념관3.png","images/전주시기독교근대역사기념관4.png","images/전주시기독교근대역사기념관5.png","images/전주시기독교근대역사기념관6.png"],
+        "완주책박물관": ["images/완주책박물관.png","images/완주책박물관2.png","images/완주책박물관3.png","images/완주책박물관4.png","images/완주책박물관5.png","images/완주책박물관6.png"],
+        "원불교역사박물관": ["images/원불교역사박물관.png","images/원불교역사박물관2.png","images/원불교역사박물관3.png","images/원불교역사박물관4.png","images/원불교역사박물관5.png","images/원불교역사박물관 1층 지도.png"],
+        "전주한지박물관": ["images/전주한지박물관.png","images/전주한지박물관2.png","images/전주한지박물관3.png","images/전주한지박물관4.png","images/전주한지박물관5.png","images/전주한지박물관 지도1.png","images/전주한지박물관 지도2.png"],
+        "천호성지가톨릭성물박물관": ["images/천호성지가톨릭성물박물관.png","images/천호성지가톨릭성물박물관2.png","images/천호성지가톨릭성물박물관3.png","images/천호성지가톨릭성물박물관4.png","images/천호성지가톨릭성물박물관5.png"],
+        "충간공보물제651호박물관": ["images/충간공보물제651호박물관.png","images/충간공보물제651호박물관2.png","images/충간공보물제651호박물관3.png","images/충간공보물제651호박물관4.png","images/충간공보물제651호박물관5.png","images/충간공보물제651호박물관6.png"],
+        "카메라영상박물관": ["images/카메라영상박물관.png"],
+        "국립군산대학교 박물관": ["images/군산대학교박물관.png","images/군산대학교박물관2.png","images/군산대학교박물관3.png"],
+        "원광대학교 박물관": ["images/원광대학교박물관.png","images/원광대학교박물관2.png","images/원광대학교박물관3.png","images/원광대학교박물관4.png","images/원광대학교박물관 지도.png","images/원광대학교박물관 지도2.png","images/원광대학교박물관 지도3.png","images/원광대학교박물관 지도4.png"],
+        "전북대학교 박물관": ["images/전북대학교박물관.png","images/전북대학교박물관2.png","images/전북대학교박물관3.png","images/전북대학교박물관 지도1.png","images/전북대학교박물관 지도2.png","images/전북대학교박물관 지도3.png"],
+        "전주대학교 박물관": ["images/전주대학교박물관.png","images/전주대학교박물관2.png","images/전주대학교박물관3.png","images/전주대학교박물관4.png","images/전주대학교박물관5.png","images/전주대학교박물관 지도.png","images/전주대학교박물관 지도2.png"],
+        "남원시립김병종미술관": ["images/남원시립김병종미술관.png","images/남원시립김병종미술관2.png","images/남원시립김병종미술관3.png","images/남원시립김병종미술관4.png","images/남원시립김병종미술관5.png"],
+        "벽천미술관": ["images/벽천미술관.png","images/벽천미술관2.png","images/벽천미술관3.png","images/벽천미술관4.png","images/벽천미술관5.png","images/벽천미술관6.png"],
+        "순창공립옥천골미술관": ["images/순창공립옥천골미술관.png","images/순창공립옥천골미술관2.png","images/순창공립옥천골미술관3.png","images/순창공립옥천골미술관3.png","images/순창공립옥천골미술관4.png","images/순창공립옥천골미술관5.png"],
+        "익산예술의전당미술관": ["images/익산예술의전당미술관.png","images/익산예술의전당미술관2.png","images/익산예술의전당미술관3.png","images/익산예술의전당미술관4.png","images/익산예술의전당미술관5.png"],
+        "전북특별자치도립미술관": ["images/전북특별자치도립미술관.png","images/전북특별자치도립미술관2.png","images/전북특별자치도립미술관3.png","images/전북특별자치도립미술관4.png","images/전북특별자치도립미술관5.png","images/전북특별자치도립미술관6.png","images/전북특별자치도립미술관7.png"],
+        "정읍시립미술관": ["images/정읍시립미술관.png","images/정읍시립미술관2.png","images/정읍시립미술관3.png","images/정읍시립미술관4.png","images/정읍시립미술관5.png","images/정읍시립미술관6.png"],
+        "최북미술관": ["images/최북미술관.png","images/최북미술관2.png","images/최북미술관3.png","images/최북미술관3.png","images/최북미술관4.png","images/최북미술관5.png","images/최북미술관6.png","images/최북미술관7.png","images/최북미술관8.png"]
+    };
+
+const COURSE_DATA = {
+  1: { key: "c1", stops: [43, 25, 1, 14, 17], drive: ["23min", "26min", "8min", "5min"], footer: "Total: 60min / 45km" },
+  2: { key: "c2", stops: [7, 16, 13, 42, 24, 10], drive: ["10min", "30min", "55min", "20min", "8min"], footer: "Total: 120min / 95km" },
+  3: { key: "c3", stops: [2, 27, 23], drive: ["5min (Walk)", "25min"], footer: "Total: 30min / 7km" },
+  4: { key: "c4", stops: [3, 20, 9, 46], drive: ["60min", "45min", "50min"], footer: "Total: 155min / 175km" },
+  5: { key: "c5", stops: [28, 18, 12, 21], drive: ["45min", "42min", "44min"], footer: "Total: 130min / 110km" },
+  6: { key: "c6", stops: [37, 30, 22, 11], drive: ["48min", "43min", "40min"], footer: "Total: 140min / 115km" },
+  7: { key: "c7", stops: [15, 4, 19], drive: ["10min", "95min"], footer: "Total: 105min / 110km" }
+};
+
+/* [추가] 코스별 전용 이미지 매핑 데이터 */
+const COURSE_IMAGES = {
+    1: "images/course_1.png",
+    2: "images/course_2.png",
+    3: "images/course_3.png",
+    4: "images/course_4.png",
+    5: "images/course_5.png",
+    6: "images/course_6.png",
+    7: "images/course_7.png"
+};
+
+/**********************
+ * Core Logic
+ **********************/
+let currentFilterType = "전체";
+let mapInstance = null;
+let courseMapInstance = null; 
+let markerClusterGroup = null; 
+let markersMap = new Map(); 
+let courseLayerGroup = null;
+
+function byId(id){ return document.getElementById(id); }
+
+function showSection(sectionKey) {
+  const sections = { 
+    landing: byId("landing-section"), 
+    map: byId("map-section"), 
+    course: byId("course-detail-section") 
+  };
+  
+  Object.keys(sections).forEach(k => {
+    if (sections[k]) sections[k].classList.toggle("active", k === sectionKey);
+  });
+
+  document.querySelectorAll("nav a").forEach(a => a.classList.remove("active"));
+  
+  if (sectionKey !== 'course' && courseLayerGroup) {
+      courseLayerGroup.clearLayers();
+  }
+
+  if (sectionKey === "map") {
+    byId("nav-map").classList.add("active");
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 200);
+    app.currentCourseNum = null;
+  } else if (sectionKey === "course") {
+    byId("nav-course").classList.add("active");
+    setTimeout(() => { if (courseMapInstance) courseMapInstance.invalidateSize(); }, 200);
+  } else {
+    app.currentCourseNum = null;
+  }
+}
+function renderFilters(){
+  const lang = window.__lang || "ko";
+  const sel = byId("areaFilter");
+  if(!sel) return;
+  sel.innerHTML = ""; 
+  const allOpt = document.createElement("option");
+  allOpt.value = "전체"; allOpt.textContent = t("areaAll");
+  sel.appendChild(allOpt);
+  const areas = Array.from(new Set(museumData.map(m => m.area).filter(Boolean))).sort();
+  areas.forEach(a => {
+    const opt = document.createElement("option");
+    opt.value = a; 
+    opt.textContent = (lang === "en" && AREA_I18N_EN[a]) ? AREA_I18N_EN[a] : a;
+    sel.appendChild(opt);
+  });
+}
+
+function renderMainCourses() {
+    const grid = byId("main-course-grid");
+    if(!grid) return;
+    
+    let html = "";
+    for(let i=1; i<=7; i++) {
+        const c = COURSE_DATA[i];
+        const title = t(`${c.key}t`); // 코스 제목 번역 호출
+        const desc = t(`${c.key}d`);  // 코스 설명 번역 호출
+        
+        // 📍 [수정됨] 파일명을 'course_숫자.png' 형태로 변경
+        // images 폴더 안의 파일명도 반드시 course_1.png, course_2.png ... 여야 합니다.
+        const courseImg = `images/course_${i}.png`;        
+        
+        // 사진이 없을 때를 대비한 백업용 인터넷 이미지 주소
+        const fallbackImg = `https://picsum.photos/600/400?random=${300+i}`;
+        
+        html += `
+          <div class="course-card" onclick="app.openCourse(${i})">
+            <img src="${courseImg}" 
+                 alt="course ${i}" 
+                 onerror="this.onerror=null; this.src='${fallbackImg}';">
+            <span style="color: var(--accent); font-size: 11px; font-weight: bold; letter-spacing:1px;">#COURSE ${i}</span>
+            <h4>${title}</h4>
+            <p>${desc}</p>
+          </div>
+        `;
+    }
+    grid.innerHTML = html;
+}
+const app = {
+    currentId: null, 
+    currentRating: 5, 
+    currentCourseNum: null,
+    detailSlideIdx: 0,
+    detailSlideMax: 0,
+
+    goToCourse() {
+        showSection('landing');
+        setTimeout(() => {
+            const el = document.querySelector('.course-section');
+            if(el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+    },
+
+    openCourse(num) {
+        const c = COURSE_DATA[num];
+        if(!c) return;
+        this.closeModal(); 
+        this.currentCourseNum = num;
+        showSection('course');
+        byId('courseTitle').innerText = t(c.key + 't');
+        byId('courseSub').innerText = `#COURSE ${num} | ${t(c.key + 'd')}`;
+        byId('courseFooter').innerHTML = `<div class="c-summary"><i class="fa-solid fa-car"></i> ${c.footer}</div>`;
+        const timeline = byId('courseTimeline');
+        let html = '';
+        const points = [];
+        c.stops.forEach((sid, idx) => {
+            const m = museumData.find(x => x.id === sid);
+            if(!m) return;
+            points.push([m.lat, m.lng]);
+            html += `<div class="timeline-row">
+                        <div class="c-left-rail"><div class="c-badge">${idx + 1}</div>${idx < c.stops.length - 1 ? '<div class="c-rail-line"></div>' : ''}</div>
+                        <div class="c-card" onclick="app.openModal(${m.id})">
+                          <h4>${tn(m.name)}</h4><p>${getArea(m)} · ${displayType(m.type)}</p>
+                        </div>
+                      </div>`;
+            if (idx < c.stops.length - 1) html += `<div class="c-drive"><div class="c-drive-text">${c.drive[idx]}</div></div>`;
+        });
+        timeline.innerHTML = html;
+        if(!courseMapInstance) {
+            courseMapInstance = L.map("c-map", { zoomControl: false, maxBounds: [[33, 124], [39, 131]], minZoom: 7 }).setView([35.7, 127.1], 9);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(courseMapInstance);
+            courseLayerGroup = L.layerGroup().addTo(courseMapInstance);
+        }
+        courseLayerGroup.clearLayers();
+        L.polyline(points, {color: '#1e3a8a', weight: 5, opacity: 0.8, dashArray: '10, 10'}).addTo(courseLayerGroup);
+        points.forEach((p, idx) => {
+            L.marker(p, { icon: L.divIcon({ html: `<div style="width:30px;height:30px;border-radius:50%;background:#1e3a8a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid #fff;">${idx+1}</div>`, className: '' }) }).addTo(courseLayerGroup);
+        });
+        courseMapInstance.fitBounds(points, {padding: [50, 50]});
+    },
+
+    openModal(id){
+        const m = museumData.find(x => x.id === id);
+        if (!m) return;
+        this.currentId = id;
+        this.detailSlideIdx = 0; 
+        const photos = PHOTO_MAP[m.name] || [`https://picsum.photos/900/600?random=${200 + id}`];
+        this.detailSlideMax = photos.length;
+        const wrapper = byId("mImgWrapper");
+        wrapper.style.transition = "none";
+        wrapper.style.transform = "translateX(0)";
+        wrapper.innerHTML = photos.map(p => `<img src="${p}" alt="${m.name}" onerror="this.src='https://via.placeholder.com/800x600?text=No+Image'">`).join("");
+        setTimeout(() => { wrapper.style.transition = "transform 0.4s ease-in-out"; }, 50);
+        this.updateDetailSlideUI();
+
+        byId("mType").textContent = displayType(m.type);
+        byId("mName").textContent = tn(m.name);
+        byId("mAddr").textContent = safe(getAddr(m));
+        byId("mHours").textContent = safe(m.hours);
+        byId("mClosed").textContent = t_closed(safe(m.closed));
+        byId("mPrice").textContent = t_price(safe(m.price));
+        byId("mPhone").textContent = safe(m.phone);
+        byId("mParking").textContent = t_parking(safe(m.parking));
+        byId("mConv").textContent = t_conv(safe(m.conv));
+        byId("mDesc").textContent = safe(getDesc(m));
+        byId("mTags").innerHTML = getTags(m).map(tag => `<span class="m-tag">${tag}</span>`).join("");
+
+        let hasCourse = false;
+        const relatedArea = byId('mRelatedCourseArea');
+        for(let cKey in COURSE_DATA) {
+            if(COURSE_DATA[cKey].stops.includes(id)) {
+                byId('mCourseLink').innerHTML = `<button onclick="app.openCourse(${cKey})" class="course-link-btn"><span class="name">${t(COURSE_DATA[cKey].key + 't')}</span></button>`;
+                hasCourse = true; break;
+            }
+        }
+        relatedArea.style.display = hasCourse ? "block" : "none";
+        const btnHome = byId("btnHome");
+        if (m.homepage) { btnHome.href = m.homepage; btnHome.classList.remove("hidden"); } 
+        else { btnHome.classList.add("hidden"); }
+        byId("btnKakaoMap").href = `https://map.kakao.com/link/to/${m.name},${m.lat},${m.lng}`;
+
+        this.renderNearby(m); this.renderReviews();
+        byId("detailModal").classList.add("active");
+    },
+
+    moveDetailSlide(step) {
+        if (this.detailSlideMax <= 1) return;
+        this.detailSlideIdx += step;
+        if (this.detailSlideIdx < 0) this.detailSlideIdx = this.detailSlideMax - 1;
+        if (this.detailSlideIdx >= this.detailSlideMax) this.detailSlideIdx = 0;
+        byId("mImgWrapper").style.transform = `translateX(-${this.detailSlideIdx * 100}%)`;
+        this.updateDetailSlideUI();
+    },
+
+    updateDetailSlideUI() {
+        byId("mImgCounter").innerText = `${this.detailSlideIdx + 1} / ${this.detailSlideMax}`;
+        const navs = document.querySelectorAll('.m-img-nav');
+        navs.forEach(nav => nav.style.display = this.detailSlideMax <= 1 ? 'none' : 'flex');
+    },
+
+    zoomToMarker(id) {
+        if (markersMap.has(id)) {
+            const mk = markersMap.get(id);
+            markerClusterGroup.zoomToShowLayer(mk, () => {
+                mk.openPopup();
+                mapInstance.setView(mk.getLatLng(), 15, { animate: true });
+            });
+        } else { this.openModal(id); }
+    },
+
+    closeModal(){ byId("detailModal").classList.remove("active"); this.currentId = null; },
+    
+    renderNearby(m){
+        const container = byId("mNearby"); const near = getNearby(m, 6);
+        if (!near.length){ container.innerHTML = `<p>${t("nearbyNone")}</p>`; return; }
+        container.innerHTML = near.map(x => `<div class="nb-card" onclick="app.openModal(${x.id})"><div class="nb-img" style="background-image:url('${PHOTO_MAP[x.name] ? PHOTO_MAP[x.name][0] : ''}')"></div><div class="nb-info"><div class="nb-name">${tn(x.name)}</div><div class="nb-meta"><span>${(x._dist || 0).toFixed(1)}km</span></div></div></div>`).join("");
+    },
+
+    renderReviews(){
+        const list = byId("reviewList"); const reviews = loadReviews(this.currentId);
+        if (!reviews.length){ list.innerHTML = `<div class="no-review">${t("reviewNone")}</div>`; return; }
+        list.innerHTML = reviews.map(r => `<div class="review-item"><b>${safe(r.user)}</b>: ${safe(r.text)}</div>`).join("");
+    },
+
+    addReview(){
+        const user = byId("reviewUser").value.trim(); const text = byId("reviewText").value.trim();
+        if (!user || !text){ alert(t("reviewAlert")); return; }
+        const reviews = loadReviews(this.currentId); reviews.push({ user, text, ts: Date.now() });
+        saveReviews(this.currentId, reviews); this.renderReviews();
+    },
+
+    initStarRating(){
+        const box = byId("starRating"); if (!box) return;
+        const stars = Array.from(box.querySelectorAll("i[data-score]"));
+        const setActive = (score) => { this.currentRating = score; stars.forEach(s => { s.classList.toggle("active", Number(s.dataset.score) <= score); }); };
+        setActive(5); stars.forEach(s => s.addEventListener("click", () => setActive(Number(s.dataset.score))));
+    }
+};
+
+function getFilteredData(){
+  const q = (byId("mapInput").value || "").trim().toLowerCase();
+  const area = byId("areaFilter").value || "전체";
+  return museumData.filter(m => {
+    const okType = (currentFilterType === "전체") ? true : (m.type === currentFilterType);
+    const okArea = (area === "전체") ? true : (m.area === area);
+    if (!q) return okType && okArea;
+    const hay = [m.name, m.area, m.type, m.theme, getTags(m).join(" "), m.addr, m.desc].join(" ").toLowerCase();
+    return okType && okArea && hay.includes(q);
+  });
+}
+
+function renderList(){
+ const list = byId("list-container");
+  const data = getFilteredData();
+  list.innerHTML = data.map(m => {
+    const typeClass = (m.type === "미술관") ? "art" : "museum";
+    return `
+    <div class="place-card" onclick="app.zoomToMarker(${m.id});">
+      <span class="place-type ${typeClass}">${displayType(m.type)}</span>
+      <h4>${tn(m.name)}</h4>
+      <p>${safe(getArea(m))} · ${safe(getTheme(m))}<br>${safe(getAddr(m))}</p>    
+</div>
+  `}).join("");
+}
+function renderMarkers(){
+  if (!mapInstance) return;
+  if (markerClusterGroup) { markerClusterGroup.clearLayers(); mapInstance.removeLayer(markerClusterGroup); }
+  markersMap.clear();
+
+  const data = getFilteredData();
+  if (data.length === 0) return;
+
+  markerClusterGroup = L.markerClusterGroup({
+    showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: true, removeOutsideVisibleBounds: true,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      let sizeClass = 'cluster-small';
+      if (count >= 15) sizeClass = 'cluster-large'; else if (count >= 5) sizeClass = 'cluster-medium';
+      return L.divIcon({ html: `<div><span>${count}</span></div>`, className: `custom-cluster-icon ${sizeClass}`, iconSize: new L.Point(40, 40) });
+    }
+  });
+
+  data.forEach(m => {
+    if (typeof m.lat !== "number" || typeof m.lng !== "number") return;
+    const isArt = (m.type === "미술관");
+    const color = isArt ? "#065f46" : "#1e3a8a"; 
+    const markerStyle = { radius: 8, fillColor: color, color: "#ffffff", weight: 2, opacity: 1, fillOpacity: 0.9 };
+    const popupHtml = `<div class="pop-body"><div class="pop-title">${tn(m.name)}</div><div class="pop-desc">${safe(getArea(m))} · ${displayType(m.type)}</div><button class="pop-btn" onclick="app.openModal(${m.id})">${t("popupDetail")}</button></div>`;
+    
+    const mk = L.circleMarker([m.lat, m.lng], markerStyle);
+    mk.bindPopup(popupHtml);
+    mk.bindTooltip(tn(m.name), { direction: 'top', offset: [0, -10], opacity: 0.9, className: 'custom-tooltip' });
+    mk.on('mouseover', function (e) { this.setStyle({ radius: 12, fillOpacity: 1, color: '#f59e0b', weight: 3 }); this.openTooltip(); });
+    mk.on('mouseout', function (e) { this.setStyle(markerStyle); this.closeTooltip(); });
+    mk.on('click', function (e) { this.openPopup(); });
+
+    markerClusterGroup.addLayer(mk);
+    markersMap.set(m.id, mk);
+  });
+  mapInstance.addLayer(markerClusterGroup);
+}
+
+function filterData(typeKo){
+  currentFilterType = typeKo;
+  byId("btn-all").classList.toggle("active", typeKo === "전체");
+  byId("btn-mus").classList.toggle("active", typeKo === "박물관");
+  byId("btn-art").classList.toggle("active", typeKo === "미술관");
+  renderList(); renderMarkers();
+}
+
+function initFilters(){
+  const sel = byId("areaFilter");
+  if(sel) sel.addEventListener("change", () => { renderList(); renderMarkers(); });
+  byId("mapInput").addEventListener("input", () => { renderList(); renderMarkers(); });
+}
+
+function initMaps(){
+  const koreaBounds = [[33.0, 124.0], [38.9, 131.0]]; 
+  mapInstance = L.map("map", { zoomControl: true, maxBounds: koreaBounds, maxBoundsViscosity: 1.0, minZoom: 7 }).setView([35.7175, 127.153], 9); 
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(mapInstance);
+  renderList(); renderMarkers();
+}
+
+let scrollPos = 0;         // 현재 스크롤 위치
+let isPaused = false;      // 일시정지 여부
+let animationId = null;    // 애니메이션 프레임 ID
+const speed = 1.0;         // 흐르는 속도 (숫자가 커질수록 빨라짐)
+const slideW = 480;        // 슬라이드 한 장 너비
+
+function animateSlider() {
+    if (isPaused) return; 
+
+    const wrapper = byId("slider-wrapper");
+    if (!wrapper) return;
+
+    // 원본 10장의 총 너비
+    const resetPoint = slideW * 10; 
+
+    scrollPos -= speed; 
+
+    // 한 바퀴 돌면 다시 처음으로 (눈속임 루프)
+    if (Math.abs(scrollPos) >= resetPoint) {
+        scrollPos = 0;
+    }
+
+    wrapper.style.transform = `translateX(${scrollPos}px)`;
+    animationId = requestAnimationFrame(animateSlider);
+}
+
+function manualScroll(dx) {
+    isPaused = true; 
+    if (animationId) cancelAnimationFrame(animationId);
+    const wrapper = byId("slider-wrapper");
+    if (!wrapper) return;
+
+    scrollPos = Math.round(scrollPos / slideW) * slideW;
+    scrollPos += dx; 
+
+    const resetPoint = -(slideW * 10);
+    if (scrollPos > 0) scrollPos = resetPoint + slideW;
+    if (scrollPos <= resetPoint) scrollPos = 0;
+
+    wrapper.style.transition = "transform 0.5s ease-out";
+    wrapper.style.transform = `translateX(${scrollPos}px)`;
+    
+    setTimeout(() => {
+        wrapper.style.transition = "none";
+        isPaused = false;
+        animateSlider();
+    }, 500);
+}
+
+function renderHeroSlider() {
+    const wrapper = byId("slider-wrapper");
+    if (!wrapper) return;
+
+    const picks = museumData.filter(m => typeof m.lat === "number" && typeof m.lng === "number").slice(0, 10);
+    
+   const slideHtml = picks.map((m, idx) => {
+    // PHOTO_MAP에 데이터가 있으면 쓰고, 없으면 랜덤 이미지를 사용합니다.
+    const photoArray = PHOTO_MAP[m.name];
+    const img = (photoArray && photoArray.length > 0) ? photoArray[0] : `https://picsum.photos/800/600?random=${100 + idx}`;
+    
+    return `<div class="hero-slide" onclick="showSection('map'); app.zoomToMarker(${m.id});">
+              <img src="${img}" alt="slide">
+                  <div class="slide-info">
+                    <h3>${tn(m.name)}</h3>
+                    <p>${safe(getArea(m))} · ${displayType(m.type)}</p>
+                  </div>
+                </div>`;
+    }).join("");
+
+    wrapper.innerHTML = slideHtml + slideHtml;
+    
+    scrollPos = 0;
+    isPaused = false;
+    wrapper.style.transition = "none";
+    
+    if (animationId) cancelAnimationFrame(animationId);
+    animateSlider();
+}
+
+function haversineKm(aLat, aLng, bLat, bLng){
+  const R = 6371;
+  const dLat = (bLat - aLat) * Math.PI / 180;
+  const dLng = (bLng - aLng) * Math.PI / 180;
+  return 2 * R * Math.asin(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(aLat*Math.PI/180)*Math.cos(bLat*Math.PI/180)*Math.sin(dLng/2)**2));
+}
+function getNearby(museum, k=6){
+  if (typeof museum.lat !== "number" || typeof museum.lng !== "number") return [];
+  return museumData.filter(x => x.id !== museum.id && typeof x.lat === "number" && typeof x.lng === "number")
+    .map(x => ({...x, _dist: haversineKm(museum.lat, museum.lng, x.lat, x.lng)})).sort((a,b) => a._dist - b._dist).slice(0, k);
+}
+
+function reviewKey(id){ return `reviews_${id}`; }
+function loadReviews(id){ try{ return JSON.parse(localStorage.getItem(reviewKey(id)) || "[]"); }catch(e){ return []; } }
+function saveReviews(id, arr){ localStorage.setItem(reviewKey(id), JSON.stringify(arr)); }
+
+(function initModalCloseUX(){
+  const overlay = byId("detailModal");
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) app.closeModal(); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") app.closeModal(); });
+})();
+
+window.onload = () => { 
+    initLanguage(); 
+    initMaps(); 
+    initFilters(); 
+    app.initStarRating(); 
+    
+    renderHeroSlider();   // 상단 무한 슬라이더 실행
+    renderMainCourses();  // 📍 하단 추천 코스 카드 실행 (추가됨)
+};
+</script>
+</body>
+</html>
